@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useFinanceStore } from "@/store";
-import { getSupabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/auth-context";
 import MetricsCards from "@/components/metrics-cards";
 import RecentTransactions from "@/components/recent-transactions";
 import SpendingChart from "@/components/spending-chart";
 import { Wallet, BarChart3, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type Filter = "all" | "INCOME" | "EXPENSE";
 
@@ -20,6 +21,8 @@ export default function Dashboard() {
   const { transactions, metrics, loading, setTransactions, setMetrics, setLoading } =
     useFinanceStore();
   const [filter, setFilter] = useState<Filter>("all");
+  const { token, user } = useAuth();
+  const router = useRouter();
 
   const filteredTransactions = useMemo(() => {
     if (filter === "all") return transactions;
@@ -27,69 +30,40 @@ export default function Dashboard() {
   }, [transactions, filter]);
 
   useEffect(() => {
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) {
+      console.error('NEXT_PUBLIC_API_URL is not set');
+      setLoading(false);
+      return;
+    }
+
     async function fetchData() {
       try {
-        let supabase;
-        try {
-          supabase = getSupabase();
-        } catch {
-          setLoading(false);
+        // Fetch transactions
+        const txnRes = await fetch(`${apiUrl}/api/transactions`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (txnRes.ok) {
+          const txns = await txnRes.json();
+          setTransactions(txns);
+        } else if (txnRes.status === 401) {
+          router.push("/login");
           return;
         }
-        const { data: txns } = await supabase
-          .from("transactions")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(20);
 
-        if (txns) setTransactions(txns);
-
-        const now = new Date();
-        const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const firstOfLastMonth = new Date(
-          now.getFullYear(),
-          now.getMonth() - 1,
-          1
-        ).toISOString();
-
-        const { data: monthTxns } = await supabase
-          .from("transactions")
-          .select("*")
-          .gte("created_at", firstOfMonth);
-
-        const { data: lastMonthTxns } = await supabase
-          .from("transactions")
-          .select("*")
-          .gte("created_at", firstOfLastMonth)
-          .lt("created_at", firstOfMonth);
-
-        const calc = (txns: Record<string, unknown>[]) => {
-          const income = txns
-            .filter((t) => t.type === "INCOME")
-            .reduce((s, t) => s + Number(t.amount), 0);
-          const expense = txns
-            .filter((t) => t.type === "EXPENSE")
-            .reduce((s, t) => s + Number(t.amount), 0);
-          return { income, expense, balance: income - expense };
-        };
-
-        const current = calc(monthTxns || []);
-        const previous = calc(lastMonthTxns || []);
-
-        setMetrics({
-          totalBalance: current.balance,
-          income: current.income,
-          expense: current.expense,
-          incomeChange: previous.income
-            ? ((current.income - previous.income) / previous.income) * 100
-            : current.income > 0 ? 100 : 0,
-          expenseChange: previous.expense
-            ? ((current.expense - previous.expense) / previous.expense) * 100
-            : current.expense > 0 ? 100 : 0,
-          balanceChange: previous.balance
-            ? ((current.balance - previous.balance) / Math.abs(previous.balance)) * 100
-            : current.balance > 0 ? 100 : current.balance < 0 ? -100 : 0,
+        // Fetch metrics
+        const metricsRes = await fetch(`${apiUrl}/api/transactions/metrics`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
+        if (metricsRes.ok) {
+          const metricsData = await metricsRes.json();
+          setMetrics(metricsData);
+        }
       } catch (err) {
         console.error("Failed to fetch data:", err);
       } finally {
@@ -98,7 +72,7 @@ export default function Dashboard() {
     }
 
     fetchData();
-  }, [setTransactions, setMetrics, setLoading]);
+  }, [token, setTransactions, setMetrics, setLoading, router]);
 
   if (loading) {
     return (
@@ -106,6 +80,11 @@ export default function Dashboard() {
         <p className="text-accent-cyan font-mono animate-pulse">LOADING...</p>
       </div>
     );
+  }
+
+  // Redirect if no user
+  if (!user) {
+    return null;
   }
 
   return (

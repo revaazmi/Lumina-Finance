@@ -3,10 +3,11 @@ import { message } from 'telegraf/filters';
 import { config } from '../config';
 import { transcribeAudio } from './groq.service';
 import { extractFromText, extractFromImage } from './gemini.service';
-import { getOrCreateUser, insertTransaction, getTransactions, getMonthNetBalance } from './db.service';
+import { getOrCreateUser, insertTransaction, getTransactions, getMonthNetBalance, supabase } from './db.service';
 import { AITransaction } from '../types';
 import { createWriteStream, appendFileSync } from 'fs';
 import { randomBytes } from 'crypto';
+import bcrypt from 'bcrypt';
 
 const bot = new Telegraf(config.botToken);
 
@@ -323,6 +324,26 @@ function getFieldLabel(field: string): string {
   }
 }
 
+bot.command('setpin', async (ctx) => {
+  const pin = ctx.message.text.split(' ')[1];
+  if (!pin || pin.length < 6) {
+    await ctx.reply('❌ PIN minimal 6 karakter. Gunakan perintah: /setpin <6-digit-pin>');
+    return;
+  }
+  try {
+    const userId = String(ctx.from.id);
+    const pinHash = await bcrypt.hash(pin, 10);
+    const { error } = await supabase
+      .from('users')
+      .update({ pin_hash: pinHash })
+      .eq('id', userId);
+    if (error) throw error;
+    await ctx.reply('✅ PIN berhasil diubah!');
+  } catch (err) {
+    await ctx.reply('❌ Gagal mengubah PIN.');
+  }
+});
+
 bot.command('report', async (ctx) => {
   const userId = String(ctx.from.id);
 
@@ -368,16 +389,20 @@ bot.command('report', async (ctx) => {
 });
 
 export async function startBot(retries = 5) {
+  if (!config.botToken) {
+    console.log('[bot]: BOT_TOKEN not set. Skipping bot startup.');
+    return;
+  }
   for (let i = 0; i < retries; i++) {
     try {
       await bot.launch();
-      console.log('Bot running...');
+      console.log('[bot]: Bot running...');
       return;
     } catch (err: any) {
-      console.error(`Bot launch failed (${i + 1}/${retries}):`, err.message || err);
+      console.error(`[bot]: Bot launch failed (${i + 1}/${retries}):`, err.message || err);
       if (i < retries - 1) {
         const delay = 2000 * Math.pow(2, i);
-        console.log(`Retrying in ${delay}ms...`);
+        console.log(`[bot]: Retrying in ${delay}ms...`);
         await new Promise(r => setTimeout(r, delay));
         continue;
       }

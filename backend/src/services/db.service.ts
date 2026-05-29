@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { config } from '../config';
 import { AITransaction } from '../types';
 
-const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+export const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
 
 export async function getOrCreateUser(telegramId: string, username: string | null) {
   const { data: existing } = await supabase

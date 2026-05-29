@@ -9,10 +9,15 @@ function requireEnv(key: string): string {
   return value;
 }
 
+function getEnv(key: string): string {
+  return process.env[key] || '';
+}
+
 export const config = {
-  botToken: requireEnv('BOT_TOKEN'),
-  groqApiKey: requireEnv('GROQ_API_KEY'),
-  geminiApiKey: requireEnv('GEMINI_API_KEY'),
+  botToken: getEnv('BOT_TOKEN'),
+  groqApiKey: getEnv('GROQ_API_KEY'),
+  geminiApiKey: getEnv('GEMINI_API_KEY'),
   supabaseUrl: requireEnv('SUPABASE_URL'),
   supabaseAnonKey: requireEnv('SUPABASE_ANON_KEY'),
+  jwtSecret: requireEnv('JWT_SECRET'),
 };
