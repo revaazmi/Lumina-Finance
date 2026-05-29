@@ -6,7 +6,6 @@ import transactionRouter from './api/transactions';
 import { verifyToken } from './middleware/auth';
 
 const app = express();
-const PORT = process.env.PORT ?? 3001;
 
 // CORS middleware
 app.use((req, res, next) => {
@@ -25,13 +24,13 @@ app.use((req, res, next) => {
 // Middleware
 app.use(json());
 
+// Health check
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/transactions', verifyToken, transactionRouter);
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`[server]: API running on http://localhost:${PORT}`);
-});
 
 export default app;
