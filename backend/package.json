@@ -1,0 +1,24 @@
+{
+  "name": "lumina-bot",
+  "version": "1.0.0",
+  "description": "Lumina Finance - Telegram Bot",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.0",
+    "groq-sdk": "^0.9.0",
+    "telegraf": "^4.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "pg": "^8.21.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  }
+}
