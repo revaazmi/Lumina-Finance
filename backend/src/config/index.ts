@@ -19,4 +19,5 @@ export const config = {
   supabaseUrl: requireEnv('SUPABASE_URL'),
   supabaseAnonKey: requireEnv('SUPABASE_ANON_KEY'),
   jwtSecret: requireEnv('JWT_SECRET'),
+  dashboardUrl: process.env.DASHBOARD_URL || 'https://lumina-finance-nu.vercel.app',
 };

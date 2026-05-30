@@ -348,7 +348,7 @@ bot.command('setpin', async (ctx) => {
 bot.command('login', async (ctx) => {
   const userId = String(ctx.from.id);
   const token = jwt.sign({ userId }, config.jwtSecret, { expiresIn: '5m' });
-  const dashboardUrl = process.env.DASHBOARD_URL || 'http://localhost:3000';
+  const dashboardUrl = config.dashboardUrl;
   const link = `${dashboardUrl}?token=${token}`;
 
   await ctx.reply(
