@@ -35,11 +35,17 @@ export default function LoginPage() {
   const handleTelegramLogin = async () => {
     setTgLoading(true);
     setError('');
-    const ok = await miniappLogin();
-    if (ok) {
+    const tg = window.Telegram?.WebApp;
+    if (!tg) {
+      setError('Not in Telegram Mini App. Open this page from Telegram bot.');
+      setTgLoading(false);
+      return;
+    }
+    const t = await miniappLogin();
+    if (t) {
       router.push('/');
     } else {
-      setError('Telegram login failed. Try entering PIN manually.');
+      setError('Telegram login failed. Check console (F12) for details.');
     }
     setTgLoading(false);
   };

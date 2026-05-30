@@ -16,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (telegramId: string, pin: string) => Promise<boolean>;
-  miniappLogin: () => Promise<boolean>;
+  miniappLogin: () => Promise<string | false>;
   logout: () => void;
   loading: boolean;
 }
@@ -75,19 +75,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   };
 
-  const miniappLogin = async (): Promise<boolean> => {
+  const miniappLogin = async (): Promise<string | false> => {
     try {
       const tg = window.Telegram?.WebApp;
-      if (!tg?.initData) return false;
+      if (!tg) {
+        console.warn('[miniappLogin] window.Telegram.WebApp is undefined — not opened from Mini App');
+        return false;
+      }
+      if (!tg.initData) {
+        console.error('[miniappLogin] initData is empty — check Mini App domain in @BotFather');
+        return false;
+      }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) return false;
+      if (!apiUrl) {
+        console.error('[miniappLogin] NEXT_PUBLIC_API_URL is not set');
+        return false;
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
 
       const res = await fetch(`${apiUrl}/api/auth/telegram`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ initData: tg.initData }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       if (res.ok) {
         const { token: newToken, user: newUser } = await res.json();
@@ -95,10 +110,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(newUser);
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(newUser));
-        return true;
+        return newToken;
       }
+
+      const text = await res.text();
+      console.error(`[miniappLogin] API error ${res.status}: ${text}`);
       return false;
-    } catch {
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        console.error('[miniappLogin] Request timed out after 5s');
+      } else {
+        console.error('[miniappLogin]', err?.message || err);
+      }
       return false;
     }
   };

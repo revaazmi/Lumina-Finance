@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useFinanceStore } from "@/store";
 import { useAuth } from "@/contexts/auth-context";
 import MetricsCards from "@/components/metrics-cards";
@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<Filter>("all");
   const { token, loading: authLoading, miniappLogin } = useAuth();
   const router = useRouter();
+  const miniappDone = useRef(false);
 
   const filteredTransactions = useMemo(() => {
     if (filter === "all") return transactions;
@@ -38,18 +39,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (authLoading) return;
 
-    if (!token) {
-      const tg = window.Telegram?.WebApp?.initData;
-      if (tg) {
-        miniappLogin().then((ok) => {
-          if (!ok) router.push("/login");
-        });
-      } else {
-        router.push("/login");
-      }
-      return;
-    }
-
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) {
       console.error('NEXT_PUBLIC_API_URL is not set');
@@ -57,27 +46,23 @@ export default function Dashboard() {
       return;
     }
 
-    async function fetchData() {
+    async function fetchData(t: string) {
       try {
-        // Fetch transactions
         const txnRes = await fetch(`${apiUrl}/api/transactions`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${t}` },
         });
         if (txnRes.ok) {
-          const txns = await txnRes.json();
-          setTransactions(txns);
+          setTransactions(await txnRes.json());
         } else if (txnRes.status === 401) {
           router.push("/login");
           return;
         }
 
-        // Fetch metrics
         const metricsRes = await fetch(`${apiUrl}/api/transactions/metrics`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${t}` },
         });
         if (metricsRes.ok) {
-          const metricsData = await metricsRes.json();
-          setMetrics(metricsData);
+          setMetrics(await metricsRes.json());
         }
       } catch (err) {
         console.error("Failed to fetch data:", err);
@@ -86,7 +71,23 @@ export default function Dashboard() {
       }
     }
 
-    fetchData();
+    const initData = window.Telegram?.WebApp?.initData;
+
+    if (initData && !miniappDone.current) {
+      miniappDone.current = true;
+      miniappLogin().then((t) => {
+        if (t) fetchData(t);
+        else router.push("/login");
+      });
+      return;
+    }
+
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    fetchData(token);
   }, [authLoading, token, setTransactions, setMetrics, setLoading, router, miniappLogin]);
 
   if (authLoading || loading) {
