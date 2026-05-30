@@ -12,16 +12,12 @@ interface User {
   username: string | null;
 }
 
-interface AuthResult {
-  ok: boolean;
-  error?: string;
-}
-
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (telegramId: string, pin: string) => Promise<boolean>;
-  miniappLogin: () => Promise<AuthResult>;
+  oneTapLogin: (oneTapToken: string) => Promise<string | null>;
+  miniappLogin: () => Promise<string | null>;
   logout: () => void;
   loading: boolean;
 }
@@ -80,51 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   };
 
-  function getInitDataFromHash(): string {
+  const oneTapLogin = async (oneTapToken: string): Promise<string | null> => {
     try {
-      const hash = window.location.hash;
-      if (!hash) return '';
-      const params = new URLSearchParams(hash.replace(/^#/, ''));
-      return params.get('tgWebAppData') || '';
-    } catch {
-      return '';
-    }
-  }
-
-  const miniappLogin = async (): Promise<AuthResult> => {
-    try {
-      let tg = window.Telegram?.WebApp;
-      let initData = tg?.initData || '';
-
-      // Fallback: read from URL hash (Telegram injects #tgWebAppData=...)
-      if (!initData) {
-        initData = getInitDataFromHash();
-      }
-
-      if (!initData) {
-        const debug: string[] = [];
-        debug.push(`URL: ${window.location.href}`);
-        debug.push(`Has Telegram: ${'Telegram' in window}`);
-        debug.push(`Has WebApp: ${!!window.Telegram?.WebApp}`);
-        debug.push(`Hash: ${window.location.hash || '(none)'}`);
-        return { ok: false, error: `Not in Telegram Mini App.\n${debug.join('\n')}` };
-      }
-
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
-        return { ok: false, error: 'Server URL not configured (NEXT_PUBLIC_API_URL).' };
-      }
+      if (!apiUrl) return null;
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-
-      const res = await fetch(`${apiUrl}/api/auth/telegram`, {
+      const res = await fetch(`${apiUrl}/api/auth/bot-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
-        signal: controller.signal,
+        body: JSON.stringify({ token: oneTapToken }),
       });
-      clearTimeout(timeout);
 
       if (res.ok) {
         const { token: newToken, user: newUser } = await res.json();
@@ -132,21 +93,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(newUser);
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(newUser));
-        return { ok: true };
+        return newToken;
       }
+      return null;
+    } catch {
+      return null;
+    }
+  };
 
-      const text = await res.text();
-      return { ok: false, error: `Server error (${res.status}): ${text}` };
-    } catch (err: any) {
-      if (err?.name === 'AbortError') {
-        return { ok: false, error: 'Request timed out — server unreachable.' };
+  const miniappLogin = async (): Promise<string | null> => {
+    try {
+      const initData = window.Telegram?.WebApp?.initData;
+      if (!initData) return null;
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) return null;
+
+      const res = await fetch(`${apiUrl}/api/auth/telegram`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+
+      if (res.ok) {
+        const { token: newToken, user: newUser } = await res.json();
+        setToken(newToken);
+        setUser(newUser);
+        localStorage.setItem('token', newToken);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        return newToken;
       }
-      return { ok: false, error: err?.message || 'Unknown error' };
+      return null;
+    } catch {
+      return null;
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, miniappLogin, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, oneTapLogin, miniappLogin, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

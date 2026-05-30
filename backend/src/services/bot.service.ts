@@ -8,6 +8,7 @@ import { AITransaction } from '../types';
 import { createWriteStream, appendFileSync } from 'fs';
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const bot = new Telegraf(config.botToken);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useFinanceStore } from "@/store";
 import { useAuth } from "@/contexts/auth-context";
 import MetricsCards from "@/components/metrics-cards";
@@ -8,12 +8,6 @@ import RecentTransactions from "@/components/recent-transactions";
 import SpendingChart from "@/components/spending-chart";
 import { Wallet, BarChart3, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-declare global {
-  interface Window {
-    Telegram?: { WebApp?: { initData: string } };
-  }
-}
 
 type Filter = "all" | "INCOME" | "EXPENSE";
 
@@ -27,10 +21,8 @@ export default function Dashboard() {
   const { transactions, metrics, loading, setTransactions, setMetrics, setLoading } =
     useFinanceStore();
   const [filter, setFilter] = useState<Filter>("all");
-  const [miniAppError, setMiniAppError] = useState<string | null>(null);
-  const { token, loading: authLoading, miniappLogin } = useAuth();
+  const { token, loading: authLoading, oneTapLogin, miniappLogin } = useAuth();
   const router = useRouter();
-  const miniappDone = useRef(false);
 
   const filteredTransactions = useMemo(() => {
     if (filter === "all") return transactions;
@@ -45,6 +37,32 @@ export default function Dashboard() {
       console.error('NEXT_PUBLIC_API_URL is not set');
       setLoading(false);
       return;
+    }
+
+    async function tryAutoLogin() {
+      const initData = window.Telegram?.WebApp?.initData;
+      if (initData) {
+        const t = await miniappLogin();
+        if (t) { fetchData(t); return; }
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const oneTapToken = params.get('token');
+      if (oneTapToken) {
+        const t = await oneTapLogin(oneTapToken);
+        if (t) {
+          window.history.replaceState({}, '', window.location.pathname);
+          fetchData(t);
+          return;
+        }
+      }
+
+      if (token) {
+        fetchData(token);
+        return;
+      }
+
+      router.push("/login");
     }
 
     async function fetchData(t: string) {
@@ -72,54 +90,13 @@ export default function Dashboard() {
       }
     }
 
-    const initData = window.Telegram?.WebApp?.initData;
-
-    if (initData && !miniappDone.current) {
-      miniappDone.current = true;
-      setLoading(false);
-      miniappLogin().then((res) => {
-        if (!res.ok) setMiniAppError(res.error || 'Login failed');
-      });
-      return;
-    }
-
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    fetchData(token);
-  }, [authLoading, token, setTransactions, setMetrics, setLoading, router, miniappLogin]);
+    tryAutoLogin();
+  }, [authLoading, token, setTransactions, setMetrics, setLoading, router, oneTapLogin, miniappLogin]);
 
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 p-6">
-        {miniAppError ? (
-          <>
-            <div className="border-4 border-accent-pink bg-accent-pink/10 p-4 max-w-md text-left">
-              <p className="text-accent-pink font-bold font-mono uppercase text-sm mb-2">Login Error</p>
-              {miniAppError.split('\n').map((line, i) => (
-                <p key={i} className="text-white font-mono text-xs leading-relaxed">{line}</p>
-              ))}
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => router.push('/login')}
-                className="border-4 border-black bg-white text-black font-bold px-6 py-2 font-mono text-sm hover:bg-accent-yellow transition-colors"
-              >
-                MANUAL LOGIN
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="border-4 border-black bg-accent-cyan text-black font-bold px-6 py-2 font-mono text-sm hover:bg-accent-pink transition-colors"
-              >
-                RETRY
-              </button>
-            </div>
-          </>
-        ) : (
-          <p className="text-accent-cyan font-mono animate-pulse">LOADING...</p>
-        )}
+        <p className="text-accent-cyan font-mono animate-pulse">LOADING...</p>
       </div>
     );
   }
