@@ -61,7 +61,7 @@ bot.start(async (ctx) => {
 
   const raw = `Selamat datang! Saya akan mencatat keuangan Anda.
 
-Sisa saldo Anda : Rp ${balanceStr}
+Sisa saldo Anda : ${balanceStr}
 
 Kirim:
 • Teks
