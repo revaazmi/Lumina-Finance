@@ -9,14 +9,10 @@ import SpendingChart from "@/components/spending-chart";
 import { Wallet, BarChart3, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-interface TelegramWebApp {
-  initData: string;
-}
-interface WindowWithTelegram {
-  Telegram?: { WebApp?: TelegramWebApp };
-}
 declare global {
-  interface Window extends WindowWithTelegram {}
+  interface Window {
+    Telegram?: { WebApp?: { initData: string } };
+  }
 }
 
 type Filter = "all" | "INCOME" | "EXPENSE";
