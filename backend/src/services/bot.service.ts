@@ -79,6 +79,33 @@ async function handleTransactionInput(ctx: any, transactions: AITransaction[]) {
     return;
   }
 
+  if (transactions.length === 1) {
+    const txn = transactions[0];
+    const txnId = storeTransaction(txn);
+    const type = txn.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran';
+    const amount = `Rp ${txn.amount.toLocaleString('id-ID')}`;
+
+    const text =
+      `*${escapeMarkdown(type)}*: \`${escapeMarkdown(amount)}\`\n` +
+      `Kategori: *${escapeMarkdown(txn.category)}*\n` +
+      `Catatan: ${escapeMarkdown(txn.description)}\n` +
+      `Keyakinan: *${Math.round(txn.confidenceScore * 100)}%*`;
+
+    await ctx.reply(text, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: 'Simpan', callback_data: `save_txn_${txnId}` },
+            { text: 'Edit', callback_data: `edit_one_${txnId}` },
+            { text: 'Batal', callback_data: `cancel_txn_${txnId}` },
+          ],
+        ],
+      },
+    });
+    return;
+  }
+
   const groupId = storeGroup(transactions);
 
   let text = '*Ringkasan Transaksi*\n';
@@ -92,17 +119,17 @@ async function handleTransactionInput(ctx: any, transactions: AITransaction[]) {
     text += `   Keyakinan: *${Math.round(t.confidenceScore * 100)}%*`;
   });
 
-  const keyboard = [
-    [
-      { text: 'Simpan', callback_data: `save_group_${groupId}` },
-      { text: 'Edit', callback_data: `edit_group_${groupId}` },
-      { text: 'Batal', callback_data: `cancel_group_${groupId}` },
-    ],
-  ];
-
   await ctx.reply(text, {
     parse_mode: 'MarkdownV2',
-    reply_markup: { inline_keyboard: keyboard },
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: 'Simpan Semua', callback_data: `save_group_${groupId}` },
+          { text: 'Edit', callback_data: `edit_group_${groupId}` },
+          { text: 'Batal', callback_data: `cancel_group_${groupId}` },
+        ],
+      ],
+    },
   });
 }
 
@@ -317,6 +344,33 @@ bot.action(/edit_group_(.+)/, async (ctx) => {
     await ctx.answerCbQuery();
   } catch (e: any) {
     console.error('Edit group error:', e?.message || e);
+    await ctx.answerCbQuery('Gagal memulai edit.');
+  }
+});
+
+bot.action(/edit_one_(.+)/, async (ctx) => {
+  try {
+    const txnId = ctx.match[1];
+    const transaction = retrieveTransaction(txnId);
+    if (!transaction) {
+      await ctx.answerCbQuery('Transaksi kedaluwarsa. Kirim ulang.');
+      return;
+    }
+
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+    await ctx.reply('Pilih field yang ingin diedit:', {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Jenis', callback_data: `field_${txnId}_type` }],
+          [{ text: 'Jumlah', callback_data: `field_${txnId}_amount` }],
+          [{ text: 'Kategori', callback_data: `field_${txnId}_category` }],
+          [{ text: 'Catatan', callback_data: `field_${txnId}_description` }],
+        ],
+      },
+    });
+    await ctx.answerCbQuery();
+  } catch (e: any) {
+    console.error('Edit one error:', e?.message || e);
     await ctx.answerCbQuery('Gagal memulai edit.');
   }
 });
