@@ -1,6 +1,16 @@
 "use client";
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+interface TelegramWebApp {
+  initData: string;
+}
+interface WindowWithTelegram {
+  Telegram?: { WebApp?: TelegramWebApp };
+}
+declare global {
+  interface Window extends WindowWithTelegram {}
+}
+
 interface User {
   id: string;
   username: string | null;
