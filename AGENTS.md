@@ -7,7 +7,7 @@ Membangun "Lumina Finance", ekosistem pencatat keuangan yang terdiri dari Telegr
 
 Sistem menggunakan kombinasi Multi-AI (Free Tier):
 - **Groq API (Whisper Model):** Digunakan untuk melakukan Transkripsi Audio (*Speech-to-Text*) dari Voice Note secara kilat.
-- **Google Gemini 2.5 Flash API:** Digunakan untuk memproses input Gambar (*Vision*) dan memproses teks hasil transkripsi/chat biasa untuk diekstrak menjadi data JSON terstruktur.
+- **Groq API (Llama 3.3 + Llama 4 Scout):** Digunakan untuk semua ekstraksi data dari teks dan gambar (*Vision*), serta transkripsi audio via Whisper.
 
 Stack Teknologi:
 - Backend/Bot: Node.js, TypeScript, Telegraf (Telegram Bot Framework)
@@ -16,9 +16,9 @@ Stack Teknologi:
 
 ## 2. FEATURE LIST
 **Telegram Bot Features:**
-- **Multimodal Input Handling:** - **Teks:** Langsung dikirim ke Gemini untuk ekstraksi data.
-  - **Voice Note:** Bot mengunduh file `.ogg`/`.mp3` dari Telegram, mengirimkannya ke **Groq Whisper API** untuk diubah menjadi teks, lalu teks tersebut dikirim ke Gemini.
-  - **Gambar/Struk:** Foto langsung dikirim ke **Gemini Vision** untuk dianalisis item dan total nominalnya.
+- **Multimodal Input Handling:** - **Teks:** Langsung dikirim ke Groq (`llama-3.3-70b-versatile`) untuk ekstraksi data.
+  - **Voice Note:** Bot mengunduh file `.ogg`/`.mp3` dari Telegram, mengirimkannya ke **Groq Whisper API** untuk transkripsi, lalu teks dikirim ke Groq untuk ekstraksi.
+  - **Gambar/Struk:** Foto langsung dikirim ke **Groq Llama 4 Scout Vision** untuk dianalisis item dan total nominalnya.
 - **AI Processing & Extraction:** AI wajib mengekstrak data menjadi komponen: Pemasukan/Pengeluaran, Nominal, Kategori, Catatan, Tanggal.
 - **Smart Confirmation:** Bot membalas dengan ringkasan transaksi menggunakan Telegram Inline Keyboard untuk konfirmasi (Simpan/Batal/Edit).
 - **Report Generation:** Command `/report` untuk melihat ringkasan harian/mingguan/bulanan dalam format teks rapi.
@@ -55,15 +55,15 @@ Stack Teknologi:
 
 ## 6. BACKEND & AI PIPELINE REQUIREMENTS
 - **Telegram Webhook/Polling:** Setup menggunakan `telegraf`.
-- **Multi-AI Integration Workflow:**
-  1. **Jika Input Teks:** Kirim teks ke Gemini 2.5 Flash.
+- **Multi-AI Integration Workflow (via Groq Unified API):**
+  1. **Jika Input Teks:** Kirim teks ke Groq (`llama-3.3-70b-versatile`) untuk ekstraksi JSON.
   2. **Jika Input Voice Note:** - Download file audio via Telegram `getFileLink`.
-     - Gunakan SDK `@groq/groq-sdk` dengan model `whisper-large-v3` untuk transkripsi menjadi teks.
-     - Kirim teks hasil transkripsi Groq ke Gemini 2.5 Flash untuk ekstraksi JSON.
-  3. **Jika Input Gambar:** Konversi gambar ke buffer/base64, kirim ke Gemini 2.5 Flash menggunakan fitur *multimodal vision*.
-- **Gemini Structured Output Rule:** Wajib menggunakan `responseSchema` atau teknik prompting ketat agar Gemini selalu mengembalikan format JSON murni:
+     - Gunakan SDK `groq-sdk` dengan model `whisper-large-v3` untuk transkripsi menjadi teks.
+     - Kirim teks hasil transkripsi ke Groq (`llama-3.3-70b-versatile`) untuk ekstraksi JSON.
+  3. **Jika Input Gambar:** Konversi gambar ke buffer/base64, kirim ke Groq (`meta-llama/llama-4-scout-17b-16e-instruct`) menggunakan fitur *multimodal vision*.
+- **Groq Structured Output Rule:** Wajib menggunakan `response_format: { type: 'json_object' }` agar Groq selalu mengembalikan format JSON murni:
   `{ type: 'income' | 'expense', amount: number, category: string, description: string, confidenceScore: number }`.
-- **Error Handling:** Berikan fallback response yang sopan jika API Groq atau Gemini menyentuh *rate limit* gratisan.
+- **Error Handling:** Berikan fallback response yang sopan jika API Groq menyentuh *rate limit* gratisan.
 
 ## 7. DATABASE STRUCTURE (SUPABASE)
 Buat skema PostgreSQL berikut:
@@ -96,7 +96,7 @@ Buat skema PostgreSQL berikut:
 
 ## 11. OUTPUT EXPECTATION
 - Hasilkan kode yang *production-ready*, rapi, modular, dan di-comment dengan baik.
-- Pisahkan logic AI Groq (`groq.service.ts`), Gemini (`gemini.service.ts`), logic Telegram (`bot.service.ts`), dan logic Database (`db.service.ts`).
+- Pisahkan logic AI Groq (`groq.service.ts` & `groq-extraction.service.ts`), logic Telegram (`bot.service.ts`), dan logic Database (`db.service.ts`).
 - Struktur folder frontend dan backend harus jelas.
 
 ## 12. DEPLOYMENT TARGET
@@ -105,4 +105,4 @@ Buat skema PostgreSQL berikut:
 - Pastikan kodenya *stateless* agar aman dijalankan di environment *serverless*.
 
 ## 13. FINAL INSTRUCTION
-Pahami semua instruksi di atas. Integrasikan pipa pemrosesan Groq (Audio) -> Gemini (JSON) dengan mulus. Jangan buat layout dashboard asal jadi. Gunakan prinsip *engineering* terbaik. 
+Pahami semua instruksi di atas. Integrasikan pipa pemrosesan Groq (Audio -> Text -> JSON) dengan mulus. Jangan buat layout dashboard asal jadi. Gunakan prinsip *engineering* terbaik. 
