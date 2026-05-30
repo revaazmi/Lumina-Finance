@@ -345,6 +345,18 @@ bot.command('setpin', async (ctx) => {
   }
 });
 
+bot.command('login', async (ctx) => {
+  const userId = String(ctx.from.id);
+  const token = jwt.sign({ userId }, config.jwtSecret, { expiresIn: '5m' });
+  const dashboardUrl = process.env.DASHBOARD_URL || 'http://localhost:3000';
+  const link = `${dashboardUrl}?token=${token}`;
+
+  await ctx.reply(
+    `Klik link di bawah untuk masuk ke dashboard (berlaku 5 menit):\n${link}`,
+    { link_preview_options: { is_disabled: true } }
+  );
+});
+
 bot.command('report', async (ctx) => {
   const userId = String(ctx.from.id);
 
