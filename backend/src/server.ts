@@ -1,6 +1,6 @@
 "use strict";
 import express from 'express';
-import { json } from 'body-parser';
+
 import authRouter from './api/auth';
 import transactionRouter from './api/transactions';
 import { verifyToken } from './middleware/auth';
@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 });
 
 // Middleware
-app.use(json());
+app.use(express.json());
 
 // Health check
 app.get('/health', (req, res) => {

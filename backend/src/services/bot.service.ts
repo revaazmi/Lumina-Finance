@@ -2,7 +2,7 @@ import { Telegraf, Markup } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { config } from '../config';
 import { transcribeAudio } from './groq.service';
-import { extractFromText, extractFromImage } from './gemini.service';
+import { extractFromText, extractFromImage } from './groq-extraction.service';
 import { getOrCreateUser, insertTransaction, getTransactions, getMonthNetBalance, supabase } from './db.service';
 import { AITransaction } from '../types';
 import { createWriteStream, appendFileSync } from 'fs';

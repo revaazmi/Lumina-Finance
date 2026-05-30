@@ -3,7 +3,7 @@ import app from './server';
 import { config } from './config';
 
 // Start Express server
-const PORT = process.env.PORT ?? 3001;
+const PORT = Number(process.env.PORT) || 3001;
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server]: API running on http://0.0.0.0:${PORT}`);
 });

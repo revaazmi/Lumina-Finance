@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   username TEXT,
+  pin_hash TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
