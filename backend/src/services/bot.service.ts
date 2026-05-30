@@ -124,7 +124,7 @@ async function handleTransactionInput(ctx: any, transactions: AITransaction[]) {
     reply_markup: {
       inline_keyboard: [
         [
-          { text: 'Simpan Semua', callback_data: `save_group_${groupId}` },
+          { text: 'Simpan', callback_data: `save_group_${groupId}` },
           { text: 'Edit', callback_data: `edit_group_${groupId}` },
           { text: 'Batal', callback_data: `cancel_group_${groupId}` },
         ],
