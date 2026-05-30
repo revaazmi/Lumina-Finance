@@ -13,16 +13,34 @@ import jwt from 'jsonwebtoken';
 const bot = new Telegraf(config.botToken);
 
 const pendingGroups = new Map<string, AITransaction[]>();
+const pendingTransactions = new Map<string, AITransaction>();
+const editStates = new Map<number, { txnId: string; field: string }>();
 
 function storeGroup(transactions: AITransaction[]): string {
   const id = randomBytes(4).toString('hex');
   pendingGroups.set(id, transactions);
+  transactions.forEach((t, i) => {
+    const txnId = `${id}_${i}`;
+    pendingTransactions.set(txnId, t);
+    setTimeout(() => pendingTransactions.delete(txnId), 5 * 60 * 1000);
+  });
   setTimeout(() => pendingGroups.delete(id), 5 * 60 * 1000);
   return id;
 }
 
 function retrieveGroup(id: string): AITransaction[] | null {
   return pendingGroups.get(id) || null;
+}
+
+function storeTransaction(t: AITransaction): string {
+  const id = randomBytes(4).toString('hex');
+  pendingTransactions.set(id, t);
+  setTimeout(() => pendingTransactions.delete(id), 5 * 60 * 1000);
+  return id;
+}
+
+function retrieveTransaction(id: string): AITransaction | null {
+  return pendingTransactions.get(id) || null;
 }
 
 function escapeMarkdown(text: string): string {
@@ -74,20 +92,104 @@ async function handleTransactionInput(ctx: any, transactions: AITransaction[]) {
     text += `   Keyakinan: *${Math.round(t.confidenceScore * 100)}%*`;
   });
 
+  const editButtons = transactions.map((_, i) => ({
+    text: `Edit ${i + 1}`,
+    callback_data: `edit_${groupId}_${i}`,
+  }));
+  const keyboard = [
+    [
+      { text: 'Simpan Semua', callback_data: `save_group_${groupId}` },
+      { text: 'Batal', callback_data: `cancel_group_${groupId}` },
+    ],
+    editButtons,
+  ];
+
   await ctx.reply(text, {
     parse_mode: 'MarkdownV2',
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: 'Simpan Semua', callback_data: `save_group_${groupId}` },
-          { text: 'Batal', callback_data: `cancel_group_${groupId}` },
-        ],
-      ],
-    },
+    reply_markup: { inline_keyboard: keyboard },
   });
 }
 
 bot.on(message('text'), async (ctx, next) => {
+  const userId = Number(ctx.from.id);
+  const editState = editStates.get(userId);
+
+  if (editState) {
+    try {
+      const { txnId, field } = editState;
+      const transaction = retrieveTransaction(txnId);
+      if (!transaction) {
+        await ctx.reply('Transaksi kedaluwarsa. Kirim ulang.');
+        editStates.delete(userId);
+        return;
+      }
+
+      const newValue = ctx.message.text.trim();
+      let updated = { ...transaction };
+
+      switch (field) {
+        case 'type':
+          const lower = newValue.toLowerCase();
+          if (lower === 'pemasukan' || lower === 'income' || lower === 'in') {
+            updated.type = 'INCOME';
+          } else if (lower === 'pengeluaran' || lower === 'expense' || lower === 'ex') {
+            updated.type = 'EXPENSE';
+          } else {
+            await ctx.reply('Jenis tidak valid. Gunakan "Pemasukan" atau "Pengeluaran". Coba lagi.\\.\\.\\.');
+            return;
+          }
+          break;
+        case 'amount':
+          const amount = Number(newValue.replace(/[^0-9]/g, ''));
+          if (!amount || amount <= 0 || isNaN(amount)) {
+            await ctx.reply('Jumlah tidak valid. Masukkan angka positif. Coba lagi.\\.\\.\\.');
+            return;
+          }
+          updated.amount = amount;
+          break;
+        case 'category':
+          if (!newValue) {
+            await ctx.reply('Kategori tidak boleh kosong. Coba lagi.\\.\\.\\.');
+            return;
+          }
+          updated.category = newValue;
+          break;
+        case 'description':
+          updated.description = newValue || 'Tanpa catatan';
+          break;
+        default:
+          await ctx.reply('Field tidak dikenali.');
+          editStates.delete(userId);
+          return;
+      }
+
+      pendingTransactions.set(txnId, updated);
+      editStates.delete(userId);
+
+      const amountStr = `Rp ${updated.amount.toLocaleString('id-ID')}`;
+      const label = updated.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran';
+      await ctx.reply(
+        `*Ringkasan \\(Diperbarui\\)*\n\nJenis: *${label}*\nJumlah: \`${escapeMarkdown(amountStr)}\`\nKategori: *${escapeMarkdown(updated.category)}*\nCatatan: ${escapeMarkdown(updated.description)}`,
+        {
+          parse_mode: 'MarkdownV2',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: 'Simpan', callback_data: `save_txn_${txnId}` },
+                { text: 'Batal', callback_data: `cancel_txn_${txnId}` },
+              ],
+            ],
+          },
+        }
+      );
+    } catch (e: any) {
+      console.error('Edit processing error:', e?.message || e);
+      editStates.delete(userId);
+      await ctx.reply('Gagal mengedit. Coba lagi.');
+    }
+    return;
+  }
+
   const text = ctx.message.text;
   if (text.startsWith('/')) return next();
 
@@ -187,10 +289,100 @@ bot.action(/save_group_(.+)/, async (ctx) => {
 
 bot.action(/cancel_group_(.+)/, async (ctx) => {
   const groupId = ctx.match[1];
+  const transactions = pendingGroups.get(groupId);
+  if (transactions) {
+    transactions.forEach((_, i) => pendingTransactions.delete(`${groupId}_${i}`));
+  }
   pendingGroups.delete(groupId);
   await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
   await ctx.editMessageText('Transaksi dibatalkan.', { reply_markup: { inline_keyboard: [] } });
 });
+
+bot.action(/edit_(.+)_(\d+)/, async (ctx) => {
+  try {
+    const groupId = ctx.match[1];
+    const idx = parseInt(ctx.match[2]);
+    const txnId = `${groupId}_${idx}`;
+    const transaction = retrieveTransaction(txnId);
+    if (!transaction) {
+      await ctx.answerCbQuery('Transaksi kedaluwarsa. Kirim ulang.');
+      return;
+    }
+
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+    await ctx.reply(
+      'Pilih field yang ingin diedit:',
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: 'Jenis', callback_data: `field_${txnId}_type` }],
+            [{ text: 'Jumlah', callback_data: `field_${txnId}_amount` }],
+            [{ text: 'Kategori', callback_data: `field_${txnId}_category` }],
+            [{ text: 'Catatan', callback_data: `field_${txnId}_description` }],
+          ],
+        },
+      }
+    );
+    await ctx.answerCbQuery();
+  } catch (e: any) {
+    console.error('Edit start error:', e?.message || e);
+    await ctx.answerCbQuery('Gagal memulai edit.');
+  }
+});
+
+bot.action(/field_(.+)_(.+)/, async (ctx) => {
+  try {
+    const txnId = ctx.match[1];
+    const field = ctx.match[2];
+    const userId = Number(ctx.from.id);
+    editStates.set(userId, { txnId, field });
+
+    await ctx.editMessageText(`Kamu sedang mengedit ${getFieldLabel(field)}. Kirim nilai baru.`);
+    await ctx.answerCbQuery();
+  } catch (e: any) {
+    console.error('Field select error:', e?.message || e);
+    await ctx.answerCbQuery('Gagal memilih field.');
+  }
+});
+
+bot.action(/save_txn_(.+)/, async (ctx) => {
+  try {
+    const txnId = ctx.match[1];
+    const transaction = retrieveTransaction(txnId);
+    if (!transaction) {
+      await ctx.answerCbQuery('Transaksi kedaluwarsa. Kirim ulang.');
+      return;
+    }
+    const userId = String(ctx.from.id);
+    pendingTransactions.delete(txnId);
+    await insertTransaction(userId, transaction, 'telegram');
+
+    const label = transaction.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran';
+    const amount = `Rp ${transaction.amount.toLocaleString('id-ID')}`;
+    await ctx.editMessageText(`Tersimpan: ${label} ${amount}`,
+      { reply_markup: { inline_keyboard: [] } }
+    );
+  } catch (e: any) {
+    console.error('Save txn error:', e?.message || e);
+    await ctx.answerCbQuery('Gagal menyimpan. Coba lagi.');
+  }
+});
+
+bot.action(/cancel_txn_(.+)/, async (ctx) => {
+  const txnId = ctx.match[1];
+  pendingTransactions.delete(txnId);
+  await ctx.editMessageText('Dibatalkan.', { reply_markup: { inline_keyboard: [] } });
+});
+
+function getFieldLabel(field: string): string {
+  switch (field) {
+    case 'type': return 'Jenis (Pemasukan/Pengeluaran)';
+    case 'amount': return 'Jumlah (angka)';
+    case 'category': return 'Kategori';
+    case 'description': return 'Catatan';
+    default: return field;
+  }
+}
 
 bot.command('setpin', async (ctx) => {
   const pin = ctx.message.text.split(' ')[1];
