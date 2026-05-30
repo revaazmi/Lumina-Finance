@@ -1,22 +1,27 @@
 import Groq from 'groq-sdk';
 import { config } from '../config';
-import { AITransaction } from '../types';
+import { AITransaction, AITransactionsResponse } from '../types';
 
 const groq = new Groq({ apiKey: config.groqApiKey });
 
-const SYSTEM_PROMPT = `Extract transaction information from the text into JSON.
+const SYSTEM_PROMPT = `Extract all transaction information from the text into a JSON array.
 Return ONLY valid JSON (no markdown, no extra text) with this structure:
 {
-  "type": "INCOME" or "EXPENSE",
-  "amount": number (numeric value only),
-  "category": string (one word, e.g. "Makanan", "Transportasi", "Gaji", "Belanja", "Hiburan", "Tagihan", "Kesehatan", "Lainnya"),
-  "description": string (brief description),
-  "confidenceScore": number between 0 and 1
+  "transactions": [
+    {
+      "type": "INCOME" or "EXPENSE",
+      "amount": number (numeric value only),
+      "category": string (one word, e.g. "Makanan", "Transportasi", "Gaji", "Belanja", "Hiburan", "Tagihan", "Kesehatan", "Lainnya"),
+      "description": string (brief description),
+      "confidenceScore": number between 0 and 1
+    }
+  ]
 }
 
 Examples:
-- "beli nasi goreng 25rb" -> {"type":"EXPENSE","amount":25000,"category":"Makanan","description":"Beli nasi goreng","confidenceScore":0.95}
-- "gaji bulan ini 5 juta" -> {"type":"INCOME","amount":5000000,"category":"Gaji","description":"Gaji bulan ini","confidenceScore":0.9}`;
+- "beli nasi goreng 25rb" -> {"transactions":[{"type":"EXPENSE","amount":25000,"category":"Makanan","description":"Beli nasi goreng","confidenceScore":0.95}]}
+- "gaji bulan ini 5 juta" -> {"transactions":[{"type":"INCOME","amount":5000000,"category":"Gaji","description":"Gaji bulan ini","confidenceScore":0.9}]}
+- "beli bensin 15rb sama makan 10rb" -> {"transactions":[{"type":"EXPENSE","amount":15000,"category":"Transportasi","description":"Beli bensin","confidenceScore":0.95},{"type":"EXPENSE","amount":10000,"category":"Makanan","description":"Makan","confidenceScore":0.95}]}`;
 
 async function callGroq(messages: any[], model: string, retries = 3): Promise<any> {
   for (let i = 0; i < retries; i++) {
@@ -25,7 +30,7 @@ async function callGroq(messages: any[], model: string, retries = 3): Promise<an
         messages,
         model,
         temperature: 0.1,
-        max_tokens: 256,
+        max_tokens: 512,
         response_format: { type: 'json_object' as const },
       });
       return response;
@@ -43,7 +48,7 @@ async function callGroq(messages: any[], model: string, retries = 3): Promise<an
   throw new Error('Groq failed after all retries');
 }
 
-export async function extractFromText(text: string): Promise<AITransaction> {
+export async function extractFromText(text: string): Promise<AITransaction[]> {
   const response = await callGroq([
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: text },
@@ -51,16 +56,17 @@ export async function extractFromText(text: string): Promise<AITransaction> {
 
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error('Empty Groq response');
-  return JSON.parse(content) as AITransaction;
+  const parsed = JSON.parse(content) as AITransactionsResponse;
+  return parsed.transactions || [];
 }
 
-export async function extractFromImage(base64: string, mimeType: string): Promise<AITransaction> {
+export async function extractFromImage(base64: string, mimeType: string): Promise<AITransaction[]> {
   const response = await callGroq([
     { role: 'system', content: SYSTEM_PROMPT },
     {
       role: 'user',
       content: [
-        { type: 'text', text: 'Extract transaction information from this image.' },
+        { type: 'text', text: 'Extract all transaction information from this image.' },
         { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
       ]
     }
@@ -68,5 +74,6 @@ export async function extractFromImage(base64: string, mimeType: string): Promis
 
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error('Empty Groq response');
-  return JSON.parse(content) as AITransaction;
+  const parsed = JSON.parse(content) as AITransactionsResponse;
+  return parsed.transactions || [];
 }

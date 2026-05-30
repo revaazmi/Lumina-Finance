@@ -56,9 +56,15 @@ Gunakan /report untuk laporan lengkap.`;
   await ctx.reply(escapeMarkdown(raw), { parse_mode: 'MarkdownV2' });
 });
 
-async function handleTransactionInput(ctx: any, transaction: AITransaction) {
-  const txnId = storeTransaction(transaction);
-  await sendConfirmation(ctx, txnId, transaction, false);
+async function handleTransactionInput(ctx: any, transactions: AITransaction[]) {
+  if (!transactions.length) {
+    await ctx.reply('Tidak ada transaksi yang ditemukan dari input tersebut.');
+    return;
+  }
+  for (const txn of transactions) {
+    const txnId = storeTransaction(txn);
+    await sendConfirmation(ctx, txnId, txn, false);
+  }
 }
 
 async function sendConfirmation(
@@ -165,8 +171,8 @@ bot.on(message('text'), async (ctx, next) => {
   if (text.startsWith('/')) return next();
 
   try {
-    const transaction = await extractFromText(text);
-    await handleTransactionInput(ctx, transaction);
+    const transactions = await extractFromText(text);
+    await handleTransactionInput(ctx, transactions);
   } catch (error: any) {
     console.error('Text extraction error:', error?.message || error);
     await ctx.reply('Maaf, saya tidak bisa memproses teks tersebut. Coba lagi dengan format yang lebih jelas.');
@@ -199,11 +205,11 @@ bot.on(message('voice'), async (ctx) => {
     const text = await transcribeAudio(filePath);
     logVoice('Groq: ' + text);
 
-    logVoice('Gemini extracting...');
-    const transaction = await extractFromText(text);
-    logVoice('Gemini: OK');
+    logVoice('Extracting...');
+    const transactions = await extractFromText(text);
+    logVoice('Extracted: ' + transactions.length + ' items');
 
-    await handleTransactionInput(ctx, transaction);
+    await handleTransactionInput(ctx, transactions);
   } catch (error: any) {
     const msg = error?.message || String(error);
     logVoice('FAILED: ' + msg);
@@ -221,8 +227,8 @@ bot.on(message('photo'), async (ctx) => {
     const buffer = Buffer.from(await response.arrayBuffer());
     const base64 = buffer.toString('base64');
 
-    const transaction = await extractFromImage(base64, 'image/jpeg');
-    await handleTransactionInput(ctx, transaction);
+    const transactions = await extractFromImage(base64, 'image/jpeg');
+    await handleTransactionInput(ctx, transactions);
   } catch (error) {
     await ctx.reply('Maaf, gagal memproses gambar. Pastikan fotonya jelas.');
   }

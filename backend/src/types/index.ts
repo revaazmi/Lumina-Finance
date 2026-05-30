@@ -1,5 +1,9 @@
 export type TransactionType = 'INCOME' | 'EXPENSE';
 
+export interface AITransactionsResponse {
+  transactions: AITransaction[];
+}
+
 export interface AITransaction {
   type: TransactionType;
   amount: number;
