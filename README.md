@@ -59,7 +59,6 @@ Fintrack Tele/
 │   ├── store/          # Zustand store
 │   └── lib/            # Supabase client, utils
 ├── .gitignore
-├── AGENTS.md          # Internal AI instructions (gitignored)
 └── README.md
 ```
 
