@@ -12,18 +12,17 @@ import jwt from 'jsonwebtoken';
 
 const bot = new Telegraf(config.botToken);
 
-const pendingTransactions = new Map<string, AITransaction>();
-const editStates = new Map<number, { txnId: string; field: string }>();
+const pendingGroups = new Map<string, AITransaction[]>();
 
-function storeTransaction(t: AITransaction): string {
+function storeGroup(transactions: AITransaction[]): string {
   const id = randomBytes(4).toString('hex');
-  pendingTransactions.set(id, t);
-  setTimeout(() => pendingTransactions.delete(id), 5 * 60 * 1000);
+  pendingGroups.set(id, transactions);
+  setTimeout(() => pendingGroups.delete(id), 5 * 60 * 1000);
   return id;
 }
 
-function retrieveTransaction(id: string): AITransaction | null {
-  return pendingTransactions.get(id) || null;
+function retrieveGroup(id: string): AITransaction[] | null {
+  return pendingGroups.get(id) || null;
 }
 
 function escapeMarkdown(text: string): string {
@@ -58,42 +57,30 @@ Gunakan /report untuk laporan lengkap.`;
 
 async function handleTransactionInput(ctx: any, transactions: AITransaction[]) {
   if (!transactions.length) {
-    await ctx.reply('Tidak ada transaksi yang ditemukan dari input tersebut.');
+    await ctx.reply('Tidak ada transaksi yang ditemukan.');
     return;
   }
-  for (const txn of transactions) {
-    const txnId = storeTransaction(txn);
-    await sendConfirmation(ctx, txnId, txn, false);
-  }
-}
 
-async function sendConfirmation(
-  ctx: any,
-  txnId: string,
-  transaction: AITransaction,
-  isEdit: boolean = false
-) {
-  const amountStr = `Rp ${transaction.amount.toLocaleString('id-ID')}`;
-  const title = isEdit ? 'Ringkasan Transaksi \\(Diperbarui\\)' : 'Ringkasan Transaksi';
-  const escapedCategory = escapeMarkdown(transaction.category);
-  const escapedDesc = escapeMarkdown(transaction.description);
+  const groupId = storeGroup(transactions);
 
-  const text =
-    `*${title}*\n\n` +
-    `Jenis: *${transaction.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'}*\n` +
-    `Jumlah: \`${amountStr}\`\n` +
-    `Kategori: *${escapedCategory}*\n` +
-    `Catatan: ${escapedDesc}\n` +
-    `Keyakinan: *${Math.round(transaction.confidenceScore * 100)}%*`;
+  let text = '*Ringkasan Transaksi*\n';
+  transactions.forEach((t, i) => {
+    const type = t.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran';
+    const amount = `Rp ${t.amount.toLocaleString('id-ID')}`;
+    text += `\n${i + 1}\\. *${escapeMarkdown(type)}*\n`;
+    text += `   Jumlah: \`${escapeMarkdown(amount)}\`\n`;
+    text += `   Kategori: *${escapeMarkdown(t.category)}*\n`;
+    text += `   Catatan: ${escapeMarkdown(t.description)}\n`;
+    text += `   Keyakinan: *${Math.round(t.confidenceScore * 100)}%*`;
+  });
 
   await ctx.reply(text, {
     parse_mode: 'MarkdownV2',
     reply_markup: {
       inline_keyboard: [
         [
-          { text: 'Simpan', callback_data: `save_${txnId}` },
-          { text: 'Edit', callback_data: `edit_${txnId}` },
-          { text: 'Batal', callback_data: 'cancel' },
+          { text: 'Simpan Semua', callback_data: `save_group_${groupId}` },
+          { text: 'Batal', callback_data: `cancel_group_${groupId}` },
         ],
       ],
     },
@@ -101,72 +88,6 @@ async function sendConfirmation(
 }
 
 bot.on(message('text'), async (ctx, next) => {
-  const userId = Number(ctx.from.id);
-  const editState = editStates.get(userId);
-
-  if (editState) {
-    try {
-      const { txnId, field } = editState;
-      const transaction = retrieveTransaction(txnId);
-      if (!transaction) {
-        await ctx.reply('Transaksi kedaluwarsa. Kirim ulang.');
-        editStates.delete(userId);
-        return;
-      }
-
-      const newValue = ctx.message.text.trim();
-      let updated = { ...transaction };
-
-      switch (field) {
-        case 'type':
-          const lower = newValue.toLowerCase();
-          if (lower === 'pemasukan' || lower === 'income' || lower === 'in') {
-            updated.type = 'INCOME';
-          } else if (lower === 'pengeluaran' || lower === 'expense' || lower === 'ex') {
-            updated.type = 'EXPENSE';
-          } else {
-            await ctx.reply('Jenis tidak valid. Gunakan "Pemasukan" atau "Pengeluaran". Coba lagi.\\.\\.\\.');
-            return;
-          }
-          break;
-        case 'amount':
-          const amount = Number(newValue.replace(/[^0-9]/g, ''));
-          if (!amount || amount <= 0 || isNaN(amount)) {
-            await ctx.reply('Jumlah tidak valid. Masukkan angka positif. Coba lagi.\\.\\.\\.');
-            return;
-          }
-          updated.amount = amount;
-          break;
-        case 'category':
-          if (!newValue) {
-            await ctx.reply('Kategori tidak boleh kosong. Coba lagi.\\.\\.\\.');
-            return;
-          }
-          updated.category = newValue;
-          break;
-        case 'description':
-          updated.description = newValue || 'Tanpa catatan';
-          break;
-        default:
-          await ctx.reply('Field tidak dikenali.');
-          editStates.delete(userId);
-          return;
-      }
-
-      // Update stored transaction
-      pendingTransactions.set(txnId, updated);
-      editStates.delete(userId);
-
-      // Show updated confirmation
-      await sendConfirmation(ctx, txnId, updated, true);
-    } catch (e: any) {
-      console.error('Edit processing error:', e?.message || e);
-      editStates.delete(userId);
-      await ctx.reply('Gagal mengedit. Coba lagi.');
-    }
-    return;
-  }
-
   const text = ctx.message.text;
   if (text.startsWith('/')) return next();
 
@@ -234,24 +155,29 @@ bot.on(message('photo'), async (ctx) => {
   }
 });
 
-bot.action(/save_(.+)/, async (ctx) => {
+bot.action(/save_group_(.+)/, async (ctx) => {
   try {
-    const txnId = ctx.match[1];
-    const transaction = retrieveTransaction(txnId);
-    if (!transaction) {
+    const groupId = ctx.match[1];
+    const transactions = retrieveGroup(groupId);
+    if (!transactions) {
       await ctx.answerCbQuery('Transaksi kedaluwarsa. Kirim ulang.');
       return;
     }
     const userId = String(ctx.from.id);
 
-    await insertTransaction(userId, transaction, 'telegram');
+    pendingGroups.delete(groupId);
+    for (const txn of transactions) {
+      await insertTransaction(userId, txn, 'telegram');
+    }
 
-    const label = transaction.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran';
-    const amount = `Rp ${transaction.amount.toLocaleString('id-ID')}`;
+    const total = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const label = transactions.length > 1
+      ? `${transactions.length} transaksi tersimpan\\! Total: Rp ${total.toLocaleString('id-ID')}`
+      : `${transactions[0].type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'} tersimpan\\! Rp ${total.toLocaleString('id-ID')}`;
 
     await ctx.editMessageText(
-      `Transaksi tersimpan\n${label}: ${amount} - ${transaction.category}`,
-      { reply_markup: { inline_keyboard: [] } }
+      label,
+      { parse_mode: 'MarkdownV2', reply_markup: { inline_keyboard: [] } }
     );
   } catch (e: any) {
     console.error('Save error:', e?.message || e);
@@ -259,75 +185,12 @@ bot.action(/save_(.+)/, async (ctx) => {
   }
 });
 
-bot.action('cancel', async (ctx) => {
+bot.action(/cancel_group_(.+)/, async (ctx) => {
+  const groupId = ctx.match[1];
+  pendingGroups.delete(groupId);
   await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
   await ctx.editMessageText('Transaksi dibatalkan.', { reply_markup: { inline_keyboard: [] } });
 });
-
-bot.action(/edit_(.+)/, async (ctx) => {
-  try {
-    const txnId = ctx.match[1];
-    const transaction = retrieveTransaction(txnId);
-    if (!transaction) {
-      await ctx.answerCbQuery('Transaksi kedaluwarsa. Kirim ulang.');
-      return;
-    }
-
-    const userId = Number(ctx.from.id);
-    editStates.set(userId, { txnId, field: '' });
-
-    await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
-    const editMsg =
-      'Pilih field yang ingin diedit:\n\n' +
-      '- Jenis\n' +
-      '- Jumlah\n' +
-      '- Kategori\n' +
-      '- Catatan';
-
-    await ctx.reply(
-      editMsg + '\nKlik tombol di bawah untuk memilih field:',
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: 'Jenis', callback_data: `field_${txnId}_type` }],
-            [{ text: 'Jumlah', callback_data: `field_${txnId}_amount` }],
-            [{ text: 'Kategori', callback_data: `field_${txnId}_category` }],
-            [{ text: 'Catatan', callback_data: `field_${txnId}_description` }],
-          ],
-        },
-      }
-    );
-    await ctx.answerCbQuery();
-  } catch (e: any) {
-    console.error('Edit start error:', e?.message || e);
-    await ctx.answerCbQuery('Gagal memulai edit.');
-  }
-});
-
-bot.action(/field_(.+)_(.+)/, async (ctx) => {
-  try {
-    const [, txnId, field] = ctx.match;
-    const userId = Number(ctx.from.id);
-    editStates.set(userId, { txnId, field });
-
-    const label = escapeMarkdown(getFieldLabel(field));
-    await ctx.editMessageText(`Kamu sedang mengedit ${getFieldLabel(field)}. Kirim nilai baru.`);
-    await ctx.answerCbQuery();
-  } catch (e: any) {
-    console.error('Field select error:', e?.message || e);
-    await ctx.answerCbQuery('Gagal memilih field.');
-  }
-});
-
-function getFieldLabel(field: string): string {
-  switch (field) {
-    case 'type': return 'Jenis (Pemasukan/Pengeluaran)';
-    case 'amount': return 'Jumlah (angka)';
-    case 'category': return 'Kategori';
-    case 'description': return 'Catatan';
-    default: return field;
-  }
-}
 
 bot.command('setpin', async (ctx) => {
   const pin = ctx.message.text.split(' ')[1];
