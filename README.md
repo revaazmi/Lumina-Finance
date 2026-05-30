@@ -41,7 +41,7 @@ AI-powered Telegram finance tracker with a Neo-Brutalist dashboard. Record incom
 ## Repository Structure
 
 ```
-Fintrack Tele/
+Lumina Finance/
 ├── backend/          # Telegram bot + Express API server
 │   ├── src/
 │   │   ├── api/          # REST endpoints (auth, transactions)
@@ -80,8 +80,8 @@ Fintrack Tele/
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/<your-username>/fintrack-tele.git
-cd "Fintrack Tele"
+git clone https://github.com/revaazmi/Lumina-Finance.git
+cd "Lumina Finance"
 ```
 
 Install dependencies for both modules:
@@ -213,14 +213,14 @@ Open `http://localhost:3000` for dashboard. Talk to your bot on Telegram.
 git init
 git add .
 git commit -m "Initial commit"
-git remote add origin https://github.com/<username>/fintrack-tele.git
+git remote add origin https://github.com/revaazmi/Lumina-Finance.git
 git push -u origin main
 ```
 
 ### Railway (Backend Bot)
 
 1. Go to [Railway.app](https://railway.app) → New Project → Deploy from GitHub
-2. Select repo `fintrack-tele`, root directory: `backend`
+2. Select repo `Lumina-Finance`, root directory: `backend`
 3. Set environment variables (same as `backend/.env`):
    - `BOT_TOKEN`
    - `GROQ_API_KEY`
@@ -233,7 +233,7 @@ git push -u origin main
 
 ### Vercel (Dashboard)
 
-1. Go to [Vercel](https://vercel.com) → New Project → Import `fintrack-tele`
+1. Go to [Vercel](https://vercel.com) → New Project → Import `Lumina-Finance`
 2. Root directory: `dashboard`
 3. Environment Variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
