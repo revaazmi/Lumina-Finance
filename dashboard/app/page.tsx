@@ -27,6 +27,7 @@ export default function Dashboard() {
   const { transactions, metrics, loading, setTransactions, setMetrics, setLoading } =
     useFinanceStore();
   const [filter, setFilter] = useState<Filter>("all");
+  const [miniAppError, setMiniAppError] = useState<string | null>(null);
   const { token, loading: authLoading, miniappLogin } = useAuth();
   const router = useRouter();
   const miniappDone = useRef(false);
@@ -75,9 +76,9 @@ export default function Dashboard() {
 
     if (initData && !miniappDone.current) {
       miniappDone.current = true;
-      miniappLogin().then((t) => {
-        if (t) fetchData(t);
-        else router.push("/login");
+      setLoading(false);
+      miniappLogin().then((res) => {
+        if (!res.ok) setMiniAppError(res.error || 'Login failed');
       });
       return;
     }
@@ -92,8 +93,23 @@ export default function Dashboard() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <p className="text-accent-cyan font-mono animate-pulse">LOADING...</p>
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 p-6">
+        {miniAppError ? (
+          <>
+            <div className="border-4 border-accent-pink bg-accent-pink/10 p-4 max-w-md text-center">
+              <p className="text-accent-pink font-bold font-mono uppercase text-sm mb-2">Login Error</p>
+              <p className="text-white font-mono text-xs">{miniAppError}</p>
+            </div>
+            <button
+              onClick={() => router.push('/login')}
+              className="border-4 border-black bg-white text-black font-bold px-6 py-2 font-mono text-sm hover:bg-accent-yellow transition-colors"
+            >
+              MANUAL LOGIN
+            </button>
+          </>
+        ) : (
+          <p className="text-accent-cyan font-mono animate-pulse">LOADING...</p>
+        )}
       </div>
     );
   }
