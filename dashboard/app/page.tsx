@@ -96,16 +96,26 @@ export default function Dashboard() {
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 p-6">
         {miniAppError ? (
           <>
-            <div className="border-4 border-accent-pink bg-accent-pink/10 p-4 max-w-md text-center">
+            <div className="border-4 border-accent-pink bg-accent-pink/10 p-4 max-w-md text-left">
               <p className="text-accent-pink font-bold font-mono uppercase text-sm mb-2">Login Error</p>
-              <p className="text-white font-mono text-xs">{miniAppError}</p>
+              {miniAppError.split('\n').map((line, i) => (
+                <p key={i} className="text-white font-mono text-xs leading-relaxed">{line}</p>
+              ))}
             </div>
-            <button
-              onClick={() => router.push('/login')}
-              className="border-4 border-black bg-white text-black font-bold px-6 py-2 font-mono text-sm hover:bg-accent-yellow transition-colors"
-            >
-              MANUAL LOGIN
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => router.push('/login')}
+                className="border-4 border-black bg-white text-black font-bold px-6 py-2 font-mono text-sm hover:bg-accent-yellow transition-colors"
+              >
+                MANUAL LOGIN
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="border-4 border-black bg-accent-cyan text-black font-bold px-6 py-2 font-mono text-sm hover:bg-accent-pink transition-colors"
+              >
+                RETRY
+              </button>
+            </div>
           </>
         ) : (
           <p className="text-accent-cyan font-mono animate-pulse">LOADING...</p>

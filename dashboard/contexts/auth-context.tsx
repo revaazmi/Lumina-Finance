@@ -80,14 +80,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   };
 
+  function getInitDataFromHash(): string {
+    try {
+      const hash = window.location.hash;
+      if (!hash) return '';
+      const params = new URLSearchParams(hash.replace(/^#/, ''));
+      return params.get('tgWebAppData') || '';
+    } catch {
+      return '';
+    }
+  }
+
   const miniappLogin = async (): Promise<AuthResult> => {
     try {
-      const tg = window.Telegram?.WebApp;
-      if (!tg) {
-        return { ok: false, error: 'Not in Telegram Mini App. Open from bot menu.' };
+      let tg = window.Telegram?.WebApp;
+      let initData = tg?.initData || '';
+
+      // Fallback: read from URL hash (Telegram injects #tgWebAppData=...)
+      if (!initData) {
+        initData = getInitDataFromHash();
       }
-      if (!tg.initData) {
-        return { ok: false, error: 'initData empty — set Mini App domain in @BotFather.' };
+
+      if (!initData) {
+        const debug: string[] = [];
+        debug.push(`URL: ${window.location.href}`);
+        debug.push(`Has Telegram: ${'Telegram' in window}`);
+        debug.push(`Has WebApp: ${!!window.Telegram?.WebApp}`);
+        debug.push(`Hash: ${window.location.hash || '(none)'}`);
+        return { ok: false, error: `Not in Telegram Mini App.\n${debug.join('\n')}` };
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -101,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${apiUrl}/api/auth/telegram`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData }),
+        body: JSON.stringify({ initData }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
