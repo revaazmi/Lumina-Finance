@@ -204,8 +204,6 @@ bot.on(message('voice'), async (ctx) => {
     logVoice('Gemini: OK');
 
     await handleTransactionInput(ctx, transaction);
-    const escapedText = text.replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1');
-    await ctx.reply('*Transkripsi:* ' + escapedText, { parse_mode: 'MarkdownV2' });
   } catch (error: any) {
     const msg = error?.message || String(error);
     logVoice('FAILED: ' + msg);
