@@ -92,16 +92,12 @@ async function handleTransactionInput(ctx: any, transactions: AITransaction[]) {
     text += `   Keyakinan: *${Math.round(t.confidenceScore * 100)}%*`;
   });
 
-  const editButtons = transactions.map((_, i) => ({
-    text: `Edit ${i + 1}`,
-    callback_data: `edit_${groupId}_${i}`,
-  }));
   const keyboard = [
     [
       { text: 'Simpan Semua', callback_data: `save_group_${groupId}` },
+      { text: 'Edit', callback_data: `edit_group_${groupId}` },
       { text: 'Batal', callback_data: `cancel_group_${groupId}` },
     ],
-    editButtons,
   ];
 
   await ctx.reply(text, {
@@ -296,6 +292,33 @@ bot.action(/cancel_group_(.+)/, async (ctx) => {
   pendingGroups.delete(groupId);
   await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
   await ctx.editMessageText('Transaksi dibatalkan.', { reply_markup: { inline_keyboard: [] } });
+});
+
+bot.action(/edit_group_(.+)/, async (ctx) => {
+  try {
+    const groupId = ctx.match[1];
+    const transactions = retrieveGroup(groupId);
+    if (!transactions) {
+      await ctx.answerCbQuery('Transaksi kedaluwarsa. Kirim ulang.');
+      return;
+    }
+
+    const buttons = transactions.map((_, i) => ({
+      text: `${i + 1}`,
+      callback_data: `edit_${groupId}_${i}`,
+    }));
+
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+    await ctx.reply('Pilih nomor transaksi yang ingin diedit:', {
+      reply_markup: {
+        inline_keyboard: [buttons],
+      },
+    });
+    await ctx.answerCbQuery();
+  } catch (e: any) {
+    console.error('Edit group error:', e?.message || e);
+    await ctx.answerCbQuery('Gagal memulai edit.');
+  }
 });
 
 bot.action(/edit_(.+)_(\d+)/, async (ctx) => {
