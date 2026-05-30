@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -9,8 +9,14 @@ export default function LoginPage() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [tgLoading, setTgLoading] = useState(false);
+  const { login, miniappLogin, token, loading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    if (token) router.push('/');
+  }, [token, loading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +30,18 @@ export default function LoginPage() {
       setError('Invalid Telegram ID or PIN');
     }
     setIsLoading(false);
+  };
+
+  const handleTelegramLogin = async () => {
+    setTgLoading(true);
+    setError('');
+    const ok = await miniappLogin();
+    if (ok) {
+      router.push('/');
+    } else {
+      setError('Telegram login failed. Try entering PIN manually.');
+    }
+    setTgLoading(false);
   };
 
   return (
@@ -81,8 +99,22 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-xs text-gray-500 mt-6 text-center">
-          Don't have a PIN? Set it via Telegram bot command: /setpin &lt;your-pin&gt;
+        <div className="mt-6 flex flex-col gap-3">
+          <div className="relative border-t-2 border-black my-1">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-xs text-gray-500">
+              or
+            </span>
+          </div>
+          <button
+            onClick={handleTelegramLogin}
+            disabled={tgLoading}
+            className="w-full bg-accent-cyan text-black border-4 border-black font-bold py-3 px-4 hover:bg-accent-pink transition-colors disabled:opacity-50"
+          >
+            {tgLoading ? 'VERIFYING...' : 'LOGIN WITH TELEGRAM'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-4 text-center">
+          Don't have a PIN? Chat /setpin to the bot
         </p>
       </div>
     </div>

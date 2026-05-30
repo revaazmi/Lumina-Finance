@@ -338,7 +338,7 @@ bot.command('setpin', async (ctx) => {
       .update({ pin_hash: pinHash })
       .eq('id', userId);
     if (error) throw error;
-    await ctx.reply('✅ PIN berhasil diubah!');
+    await ctx.reply(`✅ PIN berhasil diubah!\n\nTelegram ID: ${ctx.from.id}`);
   } catch (err) {
     await ctx.reply('❌ Gagal mengubah PIN.');
   }

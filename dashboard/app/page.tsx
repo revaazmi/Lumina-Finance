@@ -21,7 +21,7 @@ export default function Dashboard() {
   const { transactions, metrics, loading, setTransactions, setMetrics, setLoading } =
     useFinanceStore();
   const [filter, setFilter] = useState<Filter>("all");
-  const { token, user } = useAuth();
+  const { token, loading: authLoading, miniappLogin } = useAuth();
   const router = useRouter();
 
   const filteredTransactions = useMemo(() => {
@@ -30,8 +30,17 @@ export default function Dashboard() {
   }, [transactions, filter]);
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!token) {
-      router.push("/login");
+      const tg = (window as any).Telegram?.WebApp?.initData;
+      if (tg) {
+        miniappLogin().then((ok) => {
+          if (!ok) router.push("/login");
+        });
+      } else {
+        router.push("/login");
+      }
       return;
     }
 
@@ -72,19 +81,14 @@ export default function Dashboard() {
     }
 
     fetchData();
-  }, [token, setTransactions, setMetrics, setLoading, router]);
+  }, [authLoading, token, setTransactions, setMetrics, setLoading, router, miniappLogin]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <p className="text-accent-cyan font-mono animate-pulse">LOADING...</p>
       </div>
     );
-  }
-
-  // Redirect if no user
-  if (!user) {
-    return null;
   }
 
   return (

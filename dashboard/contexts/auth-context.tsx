@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (telegramId: string, pin: string) => Promise<boolean>;
+  miniappLogin: () => Promise<boolean>;
   logout: () => void;
   loading: boolean;
 }
@@ -68,8 +69,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   };
 
+  const miniappLogin = async (): Promise<boolean> => {
+    try {
+      const tg = (window as any).Telegram?.WebApp;
+      if (!tg?.initData) return false;
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) return false;
+
+      const res = await fetch(`${apiUrl}/api/auth/telegram`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData }),
+      });
+
+      if (res.ok) {
+        const { token: newToken, user: newUser } = await res.json();
+        setToken(newToken);
+        setUser(newUser);
+        localStorage.setItem('token', newToken);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, miniappLogin, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

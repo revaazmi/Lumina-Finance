@@ -24,3 +24,16 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+
+-- RLS Policies (allow anon key for server-side operations)
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+
+-- Users: allow all operations for anon key (validated by backend JWT)
+CREATE POLICY "anon_insert_users" ON users FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_select_users" ON users FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_update_users" ON users FOR UPDATE TO anon USING (true);
+
+-- Transactions: allow all operations for anon key (validated by backend JWT)
+CREATE POLICY "anon_insert_transactions" ON transactions FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_select_transactions" ON transactions FOR SELECT TO anon USING (true);
