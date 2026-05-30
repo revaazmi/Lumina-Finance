@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const miniappLogin = async (): Promise<boolean> => {
     try {
-      const tg = (window as any).Telegram?.WebApp;
+      const tg = window.Telegram?.WebApp;
       if (!tg?.initData) return false;
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;

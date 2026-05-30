@@ -9,6 +9,16 @@ import SpendingChart from "@/components/spending-chart";
 import { Wallet, BarChart3, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+interface TelegramWebApp {
+  initData: string;
+}
+interface WindowWithTelegram {
+  Telegram?: { WebApp?: TelegramWebApp };
+}
+declare global {
+  interface Window extends WindowWithTelegram {}
+}
+
 type Filter = "all" | "INCOME" | "EXPENSE";
 
 const navItems = [
@@ -33,7 +43,7 @@ export default function Dashboard() {
     if (authLoading) return;
 
     if (!token) {
-      const tg = (window as any).Telegram?.WebApp?.initData;
+      const tg = window.Telegram?.WebApp?.initData;
       if (tg) {
         miniappLogin().then((ok) => {
           if (!ok) router.push("/login");
