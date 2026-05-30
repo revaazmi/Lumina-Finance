@@ -18,10 +18,7 @@ Return ONLY valid JSON (no markdown, no extra text) with this structure:
   ]
 }
 
-Examples:
-- "beli nasi goreng 25rb" -> {"transactions":[{"type":"EXPENSE","amount":25000,"category":"Makanan","description":"Beli nasi goreng","confidenceScore":0.95}]}
-- "gaji bulan ini 5 juta" -> {"transactions":[{"type":"INCOME","amount":5000000,"category":"Gaji","description":"Gaji bulan ini","confidenceScore":0.9}]}
-- "beli bensin 15rb sama makan 10rb" -> {"transactions":[{"type":"EXPENSE","amount":15000,"category":"Transportasi","description":"Beli bensin","confidenceScore":0.95},{"type":"EXPENSE","amount":10000,"category":"Makanan","description":"Makan","confidenceScore":0.95}]}`;
+Be flexible in detecting transactions from natural language and stories. If no transactions are found, return an empty array.`;
 
 async function callGroq(messages: any[], model: string, retries = 3): Promise<any> {
   for (let i = 0; i < retries; i++) {
