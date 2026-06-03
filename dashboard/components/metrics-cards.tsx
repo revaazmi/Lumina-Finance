@@ -7,16 +7,18 @@ interface MetricsCardsProps {
   totalBalance: number;
   income: number;
   expense: number;
-  incomeChange: number;
-  expenseChange: number;
-  balanceChange: number;
+  incomeChange: number | null;
+  expenseChange: number | null;
+  balanceChange: number | null;
+  periodLabel: string;
 }
 
 function formatCurrency(value: number): string {
   return `Rp ${value.toLocaleString("id-ID")}`;
 }
 
-function Change({ value }: { value: number }) {
+function Change({ value }: { value: number | null }) {
+  if (value === null) return null;
   const isPos = value >= 0;
   return (
     <span className={`text-xs font-bold ${isPos ? "text-accent-green" : "text-accent-pink"}`}>
@@ -32,6 +34,7 @@ export default function MetricsCards({
   incomeChange,
   expenseChange,
   balanceChange,
+  periodLabel,
 }: MetricsCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -44,10 +47,12 @@ export default function MetricsCards({
           <p className="text-3xl font-mono font-bold text-white uppercase tracking-tight">
             {formatCurrency(totalBalance)}
           </p>
-          <div className="mt-3 flex items-center gap-2">
-            <Change value={balanceChange} />
-            <span className="text-xs text-gray-400">vs last month</span>
-          </div>
+          {balanceChange !== null && (
+            <div className="mt-3 flex items-center gap-2">
+              <Change value={balanceChange} />
+              <span className="text-xs text-gray-400">{periodLabel}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -60,10 +65,12 @@ export default function MetricsCards({
           <p className="text-3xl font-mono font-bold text-accent-green uppercase tracking-tight">
             {formatCurrency(income)}
           </p>
-          <div className="mt-3 flex items-center gap-2">
-            <Change value={incomeChange} />
-            <span className="text-xs text-gray-400">vs last month</span>
-          </div>
+          {incomeChange !== null && (
+            <div className="mt-3 flex items-center gap-2">
+              <Change value={incomeChange} />
+              <span className="text-xs text-gray-400">{periodLabel}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -76,10 +83,12 @@ export default function MetricsCards({
           <p className="text-3xl font-mono font-bold text-accent-pink uppercase tracking-tight">
             {formatCurrency(expense)}
           </p>
-          <div className="mt-3 flex items-center gap-2">
-            <Change value={expenseChange} />
-            <span className="text-xs text-gray-400">vs last month</span>
-          </div>
+          {expenseChange !== null && (
+            <div className="mt-3 flex items-center gap-2">
+              <Change value={expenseChange} />
+              <span className="text-xs text-gray-400">{periodLabel}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

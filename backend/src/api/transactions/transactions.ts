@@ -23,30 +23,58 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get monthly metrics
+// Get metrics with period filter
 router.get('/metrics', async (req, res) => {
   const userId = (req as any).user.userId;
+  const period = (req.query.period as string) || 'month';
   
   try {
     const now = new Date();
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-    
-    // Current month
-    const { data: monthTxns } = await supabase
+    let currentStart: string;
+    let compareStart: string;
+    let compareEnd: string;
+    let periodLabel: string;
+
+    switch (period) {
+      case 'all':
+        currentStart = new Date(0).toISOString();
+        compareStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        compareEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+        periodLabel = '';
+        break;
+      case 'year':
+        currentStart = new Date(now.getFullYear(), 0, 1).toISOString();
+        compareStart = new Date(now.getFullYear() - 1, 0, 1).toISOString();
+        compareEnd = currentStart;
+        periodLabel = 'vs last year';
+        break;
+      default: // 'month'
+        currentStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        compareStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        compareEnd = currentStart;
+        periodLabel = 'vs last month';
+        break;
+    }
+
+    // Current period
+    const { data: currentTxns } = await supabase
       .from('transactions')
       .select('type, amount')
       .eq('user_id', userId)
-      .gte('created_at', firstOfMonth);
-    
-    // Last month
-    const { data: lastMonthTxns } = await supabase
-      .from('transactions')
-      .select('type, amount')
-      .eq('user_id', userId)
-      .gte('created_at', firstOfLastMonth)
-      .lt('created_at', firstOfMonth);
-    
+      .gte('created_at', currentStart);
+
+    // Comparison period (skip for 'all')
+    let compareTxns: any[] | null = [];
+    if (period !== 'all') {
+      const { data } = await supabase
+        .from('transactions')
+        .select('type, amount')
+        .eq('user_id', userId)
+        .gte('created_at', compareStart)
+        .lt('created_at', compareEnd);
+      compareTxns = data;
+    }
+
     const calc = (txns: any[]) => {
       const income = txns
         .filter((t) => t.type === 'INCOME')
@@ -56,31 +84,24 @@ router.get('/metrics', async (req, res) => {
         .reduce((s, t) => s + Number(t.amount), 0);
       return { income, expense, balance: income - expense };
     };
-    
-    const current = calc(monthTxns || []);
-    const previous = calc(lastMonthTxns || []);
-    
+
+    const current = calc(currentTxns || []);
+    const previous = calc(compareTxns || []);
+
+    const pct = (cur: number, prev: number) =>
+      prev ? ((cur - prev) / prev) * 100
+        : cur > 0 ? 100
+        : cur < 0 ? -100
+        : 0;
+
     return res.json({
       totalBalance: current.balance,
       income: current.income,
       expense: current.expense,
-      incomeChange: previous.income
-        ? ((current.income - previous.income) / previous.income) * 100
-        : current.income > 0
-          ? 100
-          : 0,
-      expenseChange: previous.expense
-        ? ((current.expense - previous.expense) / previous.expense) * 100
-        : current.expense > 0
-          ? 100
-          : 0,
-      balanceChange: previous.balance
-        ? ((current.balance - previous.balance) / Math.abs(previous.balance)) * 100
-        : current.balance > 0
-          ? 100
-          : current.balance < 0
-            ? -100
-            : 0,
+      incomeChange: period === 'all' ? null : pct(current.income, previous.income),
+      expenseChange: period === 'all' ? null : pct(current.expense, previous.expense),
+      balanceChange: period === 'all' ? null : pct(current.balance, previous.balance),
+      periodLabel,
     });
   } catch (err) {
     console.error('Failed to fetch metrics:', err);

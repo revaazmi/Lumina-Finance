@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useFinanceStore } from "@/store";
+import { useFinanceStore, Period } from "@/store";
 import { useAuth } from "@/contexts/auth-context";
 import MetricsCards from "@/components/metrics-cards";
 import RecentTransactions from "@/components/recent-transactions";
 import SpendingChart from "@/components/spending-chart";
-import { Wallet, BarChart3, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Wallet, BarChart3, ArrowUpRight, ArrowDownRight, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type Filter = "all" | "INCOME" | "EXPENSE";
@@ -18,7 +18,7 @@ const navItems = [
 ];
 
 export default function Dashboard() {
-  const { transactions, metrics, loading, setTransactions, setMetrics, setLoading } =
+  const { transactions, metrics, loading, period, setTransactions, setMetrics, setLoading, setPeriod } =
     useFinanceStore();
   const [filter, setFilter] = useState<Filter>("all");
   const { token, loading: authLoading, oneTapLogin, miniappLogin } = useAuth();
@@ -28,6 +28,12 @@ export default function Dashboard() {
     if (filter === "all") return transactions;
     return transactions.filter((t) => t.type === filter);
   }, [transactions, filter]);
+
+  const periodItems: { label: string; value: Period }[] = [
+    { label: "ALL TIME", value: "all" },
+    { label: "MONTH", value: "month" },
+    { label: "YEAR", value: "year" },
+  ];
 
   useEffect(() => {
     if (authLoading) return;
@@ -65,7 +71,7 @@ export default function Dashboard() {
       router.push("/login");
     }
 
-    async function fetchData(t: string) {
+    async function fetchData(t: string, p?: Period) {
       try {
         const txnRes = await fetch(`${apiUrl}/api/transactions`, {
           headers: { Authorization: `Bearer ${t}` },
@@ -77,7 +83,7 @@ export default function Dashboard() {
           return;
         }
 
-        const metricsRes = await fetch(`${apiUrl}/api/transactions/metrics`, {
+        const metricsRes = await fetch(`${apiUrl}/api/transactions/metrics?period=${p || period}`, {
           headers: { Authorization: `Bearer ${t}` },
         });
         if (metricsRes.ok) {
@@ -91,7 +97,7 @@ export default function Dashboard() {
     }
 
     tryAutoLogin();
-  }, [authLoading, token, setTransactions, setMetrics, setLoading, router, oneTapLogin, miniappLogin]);
+  }, [authLoading, token, period, setTransactions, setMetrics, setLoading, router, oneTapLogin, miniappLogin]);
 
   if (authLoading || loading) {
     return (
@@ -144,6 +150,24 @@ export default function Dashboard() {
             <p className="text-sm text-gray-300 mt-2">your raw financial data</p>
           </header>
 
+          {/* PERIOD SELECTOR */}
+          <div className="flex items-center gap-2 mb-6">
+            <Clock size={14} className="text-gray-400" strokeWidth={1.5} />
+            {periodItems.map((item) => (
+              <button
+                key={item.value}
+                onClick={() => { setPeriod(item.value); setLoading(true); }}
+                className={`px-3 py-1.5 text-xs font-bold uppercase border-2 transition-colors ${
+                  period === item.value
+                    ? "bg-accent-cyan text-black border-accent-cyan"
+                    : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
           {metrics && (
             <MetricsCards
               totalBalance={metrics.totalBalance}
@@ -152,6 +176,7 @@ export default function Dashboard() {
               incomeChange={metrics.incomeChange}
               expenseChange={metrics.expenseChange}
               balanceChange={metrics.balanceChange}
+              periodLabel={metrics.periodLabel}
             />
           )}
 
