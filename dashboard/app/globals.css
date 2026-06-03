@@ -3,47 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ffffff;
+  --background: #fafafa;
+  --foreground: #111111;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Keyframes global */
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
-  .animate-marquee {
-    animation: marquee 25s linear infinite;
-  }
-  .border-hard {
-    border: 2px solid #000;
-    border-radius: 0;
-  }
-  .border-thick {
-    border: 4px solid #000;
-  }
-  .shadow-hard {
-    box-shadow: 4px 4px 0px 0px #000;
-  }
-  .bg-accent-green { background-color: #00ff9d; color: #000; }
-  .bg-accent-pink { background-color: #ff0055; color: #fff; }
-  .bg-accent-cyan { background-color: #00d4ff; color: #000; }
-  .bg-accent-yellow { background-color: #ffff00; color: #000; }
-  .text-accent-green { color: #00ff9d; }
-  .text-accent-pink { color: #ff0055; }
-  .text-accent-cyan { color: #00d4ff; }
-  .text-accent-yellow { color: #ffff00; }
 }

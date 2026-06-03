@@ -9,26 +9,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#0a0a0a",
-        fg: "#ffffff",
-        border: "#000000",
-        accent: {
-          cyan: "#00d4ff",
-          pink: "#ff0055",
-          green: "#00ff9d",
-          yellow: "#ffff00",
+        bg: "#fafafa",
+        fg: "#111111",
+        border: "#e5e7eb",
+        muted: "#f5f5f5",
+        subtle: "#9ca3af",
+        income: "#16a34a",
+        expense: "#dc2626",
+        brand: {
+          DEFAULT: "#0a0a0a",
+          muted: "#737373",
         },
       },
       fontFamily: {
-        mono: ["'Courier New'", "Courier", "Consolas", "monospace"],
-        sans: ["'Arial Black'", "Impact", "sans-serif"],
-      },
-      borderWidth: {
-        4: "4px",
-      },
-      boxShadow: {
-        none: "none",
-        hard: "4px 4px 0px 0px #000",
+        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "monospace"],
       },
     },
   },

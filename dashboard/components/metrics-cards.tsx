@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Wallet } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 
 interface MetricsCardsProps {
   totalBalance: number;
@@ -21,8 +21,9 @@ function Change({ value }: { value: number | null }) {
   if (value === null) return null;
   const isPos = value >= 0;
   return (
-    <span className={`text-xs font-bold ${isPos ? "text-accent-green" : "text-accent-pink"}`}>
-      {isPos ? "▲" : "▼"} {Math.abs(value).toFixed(1)}%
+    <span className={`inline-flex items-center gap-1 text-xs font-medium ${isPos ? "text-income" : "text-expense"}`}>
+      {isPos ? <TrendingUp size={12} strokeWidth={1.5} /> : <TrendingDown size={12} strokeWidth={1.5} />}
+      {Math.abs(value).toFixed(1)}%
     </span>
   );
 }
@@ -37,18 +38,20 @@ export default function MetricsCards({
   periodLabel,
 }: MetricsCardsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <Card className="border-4 border-black shadow-hard bg-accent-cyan/10">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <CardTitle>Total Balance</CardTitle>
-            <Wallet size={18} className="text-accent-cyan" strokeWidth={2} />
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between mb-2">
+            <CardTitle className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Total Balance
+            </CardTitle>
+            <Wallet size={16} className="text-gray-400" strokeWidth={1.5} />
           </div>
-          <p className="text-3xl font-mono font-bold text-white uppercase tracking-tight">
+          <p className="text-2xl font-semibold text-gray-900 tracking-tight font-mono">
             {formatCurrency(totalBalance)}
           </p>
           {balanceChange !== null && (
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2">
               <Change value={balanceChange} />
               <span className="text-xs text-gray-400">{periodLabel}</span>
             </div>
@@ -56,17 +59,19 @@ export default function MetricsCards({
         </CardContent>
       </Card>
 
-      <Card className="border-4 border-black shadow-hard bg-accent-green/10">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <CardTitle>Income</CardTitle>
-            <span className="text-xl">↑</span>
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between mb-2">
+            <CardTitle className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Income
+            </CardTitle>
+            <TrendingUp size={16} className="text-income" strokeWidth={1.5} />
           </div>
-          <p className="text-3xl font-mono font-bold text-accent-green uppercase tracking-tight">
+          <p className="text-2xl font-semibold text-income tracking-tight font-mono">
             {formatCurrency(income)}
           </p>
           {incomeChange !== null && (
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2">
               <Change value={incomeChange} />
               <span className="text-xs text-gray-400">{periodLabel}</span>
             </div>
@@ -74,17 +79,19 @@ export default function MetricsCards({
         </CardContent>
       </Card>
 
-      <Card className="border-4 border-black shadow-hard bg-accent-pink/10">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <CardTitle>Expense</CardTitle>
-            <span className="text-xl">↓</span>
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between mb-2">
+            <CardTitle className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Expense
+            </CardTitle>
+            <TrendingDown size={16} className="text-expense" strokeWidth={1.5} />
           </div>
-          <p className="text-3xl font-mono font-bold text-accent-pink uppercase tracking-tight">
+          <p className="text-2xl font-semibold text-expense tracking-tight font-mono">
             {formatCurrency(expense)}
           </p>
           {expenseChange !== null && (
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2">
               <Change value={expenseChange} />
               <span className="text-xs text-gray-400">{periodLabel}</span>
             </div>

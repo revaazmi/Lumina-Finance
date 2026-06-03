@@ -31,11 +31,9 @@ export default function SpendingChart({ transactions }: SpendingChartProps) {
 
   if (data.length === 0) {
     return (
-      <Card className="border-4 border-black shadow-hard bg-black">
-        <CardContent className="p-6">
-          <CardTitle className="mb-4 text-white border-b-2 border-black pb-2">
-            SPENDING BY CATEGORY
-          </CardTitle>
+      <Card>
+        <CardContent>
+          <CardTitle className="mb-4">Spending by Category</CardTitle>
           <p className="text-sm text-gray-400 py-8 text-center">No expense data</p>
         </CardContent>
       </Card>
@@ -43,11 +41,9 @@ export default function SpendingChart({ transactions }: SpendingChartProps) {
   }
 
   return (
-    <Card className="border-4 border-black shadow-hard bg-black">
-      <CardContent className="p-6">
-        <CardTitle className="mb-6 text-white border-b-2 border-black pb-2">
-          SPENDING BY CATEGORY
-        </CardTitle>
+    <Card>
+      <CardContent>
+        <CardTitle className="mb-6">Spending by Category</CardTitle>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -55,29 +51,29 @@ export default function SpendingChart({ transactions }: SpendingChartProps) {
                 dataKey="category"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#fff", fontSize: 12, fontFamily: "monospace" }}
+                tick={{ fill: "#9ca3af", fontSize: 11, fontFamily: "var(--font-geist-sans), sans-serif" }}
                 interval={0}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#fff", fontSize: 10, fontFamily: "monospace" }}
+                tick={{ fill: "#9ca3af", fontSize: 10, fontFamily: "var(--font-geist-mono), monospace" }}
                 tickFormatter={(v) => `${v / 1000}k`}
               />
               <Tooltip
-                cursor={{ fill: "#1a1a1a" }}
+                cursor={{ fill: "#f5f5f5" }}
                 contentStyle={{
-                  border: "2px solid #000",
-                  backgroundColor: "#0a0a0a",
-                  color: "#fff",
-                  borderRadius: 0,
-                  fontSize: 13,
-                  boxShadow: "none",
-                  fontFamily: "monospace",
+                  border: "1px solid #e5e7eb",
+                  backgroundColor: "#fff",
+                  color: "#111",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                  fontFamily: "var(--font-geist-sans), sans-serif",
                 }}
                 formatter={(value) => [formatCurrency(Number(value)), "Amount"]}
               />
-              <Bar dataKey="amount" fill="#ff0055" radius={[0, 0, 0, 0]} barSize={32} />
+              <Bar dataKey="amount" fill="#dc2626" radius={[3, 3, 0, 0]} barSize={28} />
             </BarChart>
           </ResponsiveContainer>
         </div>

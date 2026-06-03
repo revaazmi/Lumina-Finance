@@ -12,9 +12,9 @@ import { useRouter } from "next/navigation";
 type Filter = "all" | "INCOME" | "EXPENSE";
 
 const navItems = [
-  { label: "OVERVIEW", icon: BarChart3, filter: "all" as Filter },
-  { label: "INCOME", icon: ArrowUpRight, filter: "INCOME" as Filter },
-  { label: "EXPENSE", icon: ArrowDownRight, filter: "EXPENSE" as Filter },
+  { label: "Overview", icon: BarChart3, filter: "all" as Filter },
+  { label: "Income", icon: ArrowUpRight, filter: "INCOME" as Filter },
+  { label: "Expense", icon: ArrowDownRight, filter: "EXPENSE" as Filter },
 ];
 
 export default function Dashboard() {
@@ -30,9 +30,9 @@ export default function Dashboard() {
   }, [transactions, filter]);
 
   const periodItems: { label: string; value: Period }[] = [
-    { label: "ALL TIME", value: "all" },
-    { label: "MONTH", value: "month" },
-    { label: "YEAR", value: "year" },
+    { label: "All Time", value: "all" },
+    { label: "Month", value: "month" },
+    { label: "Year", value: "year" },
   ];
 
   useEffect(() => {
@@ -101,40 +101,35 @@ export default function Dashboard() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 p-6">
-        <p className="text-accent-cyan font-mono animate-pulse">LOADING...</p>
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4 p-6">
+        <p className="text-gray-400 text-sm animate-pulse">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-mono">
-      {/* MARQUEE HEADER */}
-      <div className="bg-accent-green text-black border-b-4 border-black overflow-hidden whitespace-nowrap">
-        <div className="inline-block animate-marquee">
-          LUMINA FINANCE — SMART TRACKING — LUMINA FINANCE — SMART TRACKING — LUMINA FINANCE — SMART TRACKING —
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-bg text-fg">
       <div className="flex">
         {/* SIDEBAR */}
-        <aside className="hidden md:flex flex-col w-64 min-h-screen border-r-4 border-black bg-accent-cyan p-6 sticky top-0">
-          <div className="flex items-center gap-3 mb-12">
-            <Wallet size={24} className="text-black" strokeWidth={3} />
-            <span className="text-2xl font-bold tracking-tighter uppercase">LUMINA</span>
+        <aside className="hidden md:flex flex-col w-64 min-h-screen border-r border-gray-200 bg-white p-8 sticky top-0">
+          <div className="flex items-center gap-2.5 mb-12">
+            <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
+              <Wallet size={16} className="text-white" strokeWidth={1.5} />
+            </div>
+            <span className="text-lg font-semibold text-gray-900">Lumina</span>
           </div>
-          <nav className="flex flex-col gap-3">
+          <nav className="flex flex-col gap-1">
             {navItems.map((item) => (
               <button
                 key={item.label}
                 onClick={() => setFilter(item.filter)}
-                className={`flex items-center gap-3 px-4 py-3 border-4 border-black uppercase font-bold text-sm transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   filter === item.filter
-                    ? "bg-accent-pink text-white"
-                    : "bg-white text-black hover:bg-accent-yellow"
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
                 }`}
               >
-                <item.icon size={18} />
+                <item.icon size={16} strokeWidth={1.5} />
                 {item.label}
               </button>
             ))}
@@ -143,24 +138,28 @@ export default function Dashboard() {
 
         {/* MAIN CONTENT */}
         <main className="flex-1 p-6 md:p-10 lg:p-12 max-w-7xl mx-auto">
-          <header className="mb-10 border-b-4 border-black pb-4">
-            <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight text-accent-green">
-              Dashboard
-            </h1>
-            <p className="text-sm text-gray-300 mt-2">your raw financial data</p>
+          <header className="mb-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  Dashboard
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">Your financial overview</p>
+              </div>
+            </div>
           </header>
 
           {/* PERIOD SELECTOR */}
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-8">
             <Clock size={14} className="text-gray-400" strokeWidth={1.5} />
             {periodItems.map((item) => (
               <button
                 key={item.value}
                 onClick={() => { setPeriod(item.value); setLoading(true); }}
-                className={`px-3 py-1.5 text-xs font-bold uppercase border-2 transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   period === item.value
-                    ? "bg-accent-cyan text-black border-accent-cyan"
-                    : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200"
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                 }`}
               >
                 {item.label}
@@ -192,16 +191,16 @@ export default function Dashboard() {
       </div>
 
       {/* MOBILE BOTTOM NAV */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t-4 border-black bg-accent-cyan flex justify-around py-3">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-3 px-4">
         {navItems.map((item) => (
           <button
             key={item.label}
             onClick={() => setFilter(item.filter)}
-            className={`flex flex-col items-center gap-1 text-xs font-bold ${
-              filter === item.filter ? "text-accent-pink" : "text-black"
+            className={`flex flex-col items-center gap-1 text-xs font-medium ${
+              filter === item.filter ? "text-gray-900" : "text-gray-400"
             }`}
           >
-            <item.icon size={20} />
+            <item.icon size={18} strokeWidth={1.5} />
             {item.label}
           </button>
         ))}
