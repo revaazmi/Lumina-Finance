@@ -3,7 +3,7 @@ import { message } from 'telegraf/filters';
 import { config } from '../config';
 import { transcribeAudio } from './groq.service';
 import { extractFromText, extractFromImage } from './groq-extraction.service';
-import { getOrCreateUser, insertTransaction, getTransactions, getMonthNetBalance, supabase } from './db.service';
+import { getOrCreateUser, insertTransaction, getTransactions, getNetBalance, supabase } from './db.service';
 import { AITransaction } from '../types';
 import { createWriteStream, appendFileSync } from 'fs';
 import { randomBytes } from 'crypto';
@@ -56,7 +56,7 @@ bot.start(async (ctx) => {
   await getOrCreateUser(String(user.id), user.username || null);
 
   const userId = String(user.id);
-  const balance = await getMonthNetBalance(userId);
+  const balance = await getNetBalance(userId);
   const balanceStr = `Rp ${balance.toLocaleString('id-ID')}`;
 
   const raw = `Selamat datang! Saya akan mencatat keuangan Anda.
@@ -297,13 +297,10 @@ bot.action(/save_group_(.+)/, async (ctx) => {
 
     const total = transactions.reduce((sum, t) => sum + t.amount, 0);
     const label = transactions.length > 1
-      ? `${transactions.length} transaksi tersimpan\\! Total: Rp ${total.toLocaleString('id-ID')}`
-      : `${transactions[0].type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'} tersimpan\\! Rp ${total.toLocaleString('id-ID')}`;
+      ? `${transactions.length} transaksi tersimpan! Total: Rp ${total.toLocaleString('id-ID')}`
+      : `${transactions[0].type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'} tersimpan! Rp ${total.toLocaleString('id-ID')}`;
 
-    await ctx.editMessageText(
-      label,
-      { parse_mode: 'MarkdownV2', reply_markup: { inline_keyboard: [] } }
-    );
+    await ctx.editMessageText(label, { reply_markup: { inline_keyboard: [] } });
   } catch (e: any) {
     console.error('Save error:', e?.message || e);
     await ctx.answerCbQuery('Gagal menyimpan. Coba lagi.');

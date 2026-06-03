@@ -60,6 +60,27 @@ export async function getTransactions(userId: string, days: number) {
   return data;
 }
 
+async function calcNetBalance(data: any[]): Promise<number> {
+  let income = 0;
+  let expense = 0;
+  for (const t of (data || [])) {
+    const amount = Number(t.amount);
+    if (t.type === 'INCOME') income += amount;
+    else if (t.type === 'EXPENSE') expense += amount;
+  }
+  return income - expense;
+}
+
+export async function getNetBalance(userId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('type, amount')
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  return calcNetBalance(data);
+}
+
 export async function getMonthNetBalance(userId: string): Promise<number> {
   const now = new Date();
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -71,13 +92,5 @@ export async function getMonthNetBalance(userId: string): Promise<number> {
     .gte('created_at', firstOfMonth);
 
   if (error) throw error;
-
-  let income = 0;
-  let expense = 0;
-  for (const t of (data || [])) {
-    const amount = Number(t.amount);
-    if (t.type === 'INCOME') income += amount;
-    else if (t.type === 'EXPENSE') expense += amount;
-  }
-  return income - expense;
+  return calcNetBalance(data);
 }
